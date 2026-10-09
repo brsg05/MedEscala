@@ -773,3 +773,24 @@ describe('vaga aberta (F10)', () => {
     expect(screen.getByRole('button', { name: 'Encerrar convites' })).toBeDefined();
   });
 });
+
+describe('Conta (DEC-183)', () => {
+  it('em Conta, as abas do modo continuam lá e levam de volta', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [], alertaCargaHoraria: null }),
+    });
+    render(<App />);
+    await screen.findByText('Sua escala');
+
+    fireEvent.click(screen.getAllByRole('link', { name: 'Conta' })[0] as HTMLElement);
+
+    // Antes, em /conta só sobrava a aba Conta.
+    for (const secao of ['Escala', 'Disponível', 'Decisões', 'Repasses']) {
+      expect((await screen.findAllByRole('link', { name: secao })).length).toBeGreaterThan(0);
+    }
+
+    fireEvent.click(screen.getAllByRole('link', { name: 'Escala' })[0] as HTMLElement);
+    expect(await screen.findByText('Sua escala')).toBeDefined();
+  });
+});

@@ -106,6 +106,20 @@ export function lembrarModo(modo: Modo): void {
   }
 }
 
+/**
+ * O modo cuja navegação aparece. Numa rota de modo, é ele; numa rota de fora
+ * (ex.: /conta), é o último usado — senão a pessoa entra em Conta e as outras
+ * abas somem, sem caminho de volta (DEC-183).
+ */
+export function modoDeContexto(modos: readonly Modo[], caminho: string): Modo | null {
+  const daRota = modoDaRota(modos, caminho);
+  if (daRota !== null) {
+    return daRota;
+  }
+  const inicio = rotaInicial(modos);
+  return modos.find((m) => m.inicio === inicio) ?? null;
+}
+
 export function rotaInicial(modos: readonly Modo[]): string {
   let salvo: string | null = null;
 

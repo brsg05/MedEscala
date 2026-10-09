@@ -283,3 +283,9 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | DEC-180 | Como anda a seleção (convidado da vez, candidaturas pendentes) **só aparece na escala da instituição** | Claude | Um convidado não precisa saber quem mais foi chamado (DEC-108) | DEC-108 |
 | DEC-181 | No cartão da vaga: **Convidar**, **Escalar direto** e **Candidaturas (n)**; a seleção fica no cartão da escala, não em Decisões | Claude | É ali que a chefia olha a vaga descoberta | — |
 | DEC-182 | Vaga cujo plantão começa com a fila correndo **volta a ABERTO** sem aviso extra | Claude | O turno descoberto já aparece em vermelho na escala | — |
+
+## 2026-10-09 — Correções
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-183 | Em rota fora de um modo (Conta), a navegação e o seletor mostram **o último modo usado** | Claude | Correção: em Conta as outras abas sumiam e só saindo da conta se voltava | DEC-078, DEC-079 |

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import type { UsuarioAutenticado } from '@medescala/contracts';
 import { cn } from '@/lib/utils';
-import { lembrarModo, modoDaRota, modosDisponiveis, type Modo } from '@/modo';
+import { lembrarModo, modoDaRota, modoDeContexto, modosDisponiveis, type Modo } from '@/modo';
 import { Avisos } from './Avisos';
 
 /**
@@ -118,7 +118,9 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
   const { pathname } = useLocation();
   const modos = useMemo(() => modosDisponiveis(usuario), [usuario]);
   const ativo = modoDaRota(modos, pathname);
-  const navegacao = navegacaoDo(ativo);
+  // Fora de um modo (Conta), a navegação continua sendo a do último modo usado.
+  const contexto = modoDeContexto(modos, pathname);
+  const navegacao = navegacaoDo(contexto);
 
   useEffect(() => {
     if (ativo !== null) {
@@ -141,7 +143,7 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
         className="hidden w-60 shrink-0 border-r border-borda bg-tinta-2 p-4 md:flex md:flex-col"
       >
         <MarcaDoApp className="mb-6 px-2" />
-        <SeletorDeModo modos={modos} ativo={ativo} className="mb-6" />
+        <SeletorDeModo modos={modos} ativo={contexto} className="mb-6" />
         <ul className="space-y-1">
           {navegacao.map((item) => (
             <li key={item.para}>
@@ -169,7 +171,7 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-borda bg-tinta/95 px-4 backdrop-blur md:h-16 md:px-6">
           <MarcaDoApp className="shrink-0 md:hidden" />
-          <SeletorDeModo modos={modos} ativo={ativo} className="min-w-0 md:hidden" compacto />
+          <SeletorDeModo modos={modos} ativo={contexto} className="min-w-0 md:hidden" compacto />
           <div className="hidden md:block" />
 
           <div className="flex shrink-0 items-center gap-1.5">
