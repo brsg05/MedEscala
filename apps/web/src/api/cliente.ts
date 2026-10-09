@@ -22,6 +22,7 @@ import {
   LoginResponse,
   MeResponse,
   MedicoResponse,
+  NotificacoesResponse,
   PendenciasResponse,
   PlantaoResponse,
   RecusarRepasseRequest,
@@ -260,4 +261,13 @@ export const api = {
 
   verificarMedico: (id: string): Promise<undefined> =>
     post(`/operador/medicos/${id}/verificar`, Nada),
+
+  // --- avisos (F22) -----------------------------------------------------------
+
+  notificacoes: (): Promise<NotificacoesResponse> =>
+    requisitar('/notificacoes', NotificacoesResponse),
+
+  marcarNotificacaoLida: (id: string): Promise<undefined> => post(`/notificacoes/${id}/lida`, Nada),
+
+  marcarTodasLidas: (): Promise<undefined> => post('/notificacoes/lidas', Nada),
 };

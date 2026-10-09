@@ -10,6 +10,7 @@ import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CredenciamentoModule } from './modules/credenciamento/credenciamento.module';
 import { EscalaModule } from './modules/escala/escala.module';
+import { NotificacaoModule } from './modules/notificacao/notificacao.module';
 import { OperadorModule } from './modules/operador/operador.module';
 import { RepasseModule } from './modules/repasse/repasse.module';
 import { CsrfGuard } from './modules/auth/guards/csrf.guard';
@@ -36,6 +37,7 @@ import { PerfisGuard } from './modules/auth/guards/perfis.guard';
     }),
     PrismaModule,
     AuditoriaModule,
+    NotificacaoModule,
     AuthModule,
     CredenciamentoModule,
     EscalaModule,

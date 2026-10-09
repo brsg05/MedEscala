@@ -26,15 +26,16 @@ Decisões que ainda **não** foram tomadas e bloqueiam alguma parte do produto.
 
 | Tema | O que falta decidir | Bloqueia |
 |---|---|---|
-| Ordenação do matching (F09) | Pesos de aderência, reputação, comparecimento e distância. Até lá vale a ordenação **provisória** da DEC-094 | Matching definitivo |
-| Geolocalização (F04/F09) | PostGIS ou lat/long com haversine | "Raio geográfico" e "proximidade" |
+| Ordenação do matching (F09) | Pesos, reputação e distância. No MVP vale a ordenação em sequência da DEC-136 | Matching com reputação e distância |
+| Geolocalização (F04/F09) | PostGIS ou lat/long com haversine. **Adiada** (DEC-137) | "Raio geográfico" e "proximidade" |
 | Especialidade | Hoje é texto livre comparado por igualdade exata; deveria ser lista fechada? | Robustez da RN02 |
 | Limite de carga horária (F08) | Regra além das 24h contíguas da RN03 | Filtro do matching |
 | `StatusPagamento` | Não existe no schema; só citado em prosa (§3.2) | Sprint 4 |
-| Escala da avaliação (F18) | Nota, critérios, quando fica visível | F18 |
+| Escala da avaliação (F18) | Nota, critérios, quando fica visível. **Adiada**: não há consenso sobre a avaliação de mão dupla (DEC-123) | F18 |
 | Retenção de dados (F24) | Prazos concretos | F24 mínima |
-| PaaS de deploy | Explicitamente para a Entrega 5 | Entrega 5 |
-| Provedor de e-mail (F22) | — | Notificações |
+| PaaS de deploy | Provavelmente **Vercel**, sem confirmação (DEC-125) | Entrega 5 |
+| Provedor de e-mail (F22) | A F22 começa só in-app (DEC-121) | Notificação por e-mail |
+| Forma dos mocks de integração | Como os serviços externos da DEC-122 ficam simulados (porta + adaptador falso, ou outra) | Primeira integração simulada |
 | Multi-tenant | Modelo de tenants que vai substituir o cadastro aberto (ver DEC-059) | Cadastro definitivo |
 
 ---
@@ -200,3 +201,40 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | DEC-118 | `.claude/settings.json` **fica fora** do repositório | Claude | Guarda só permissões pontuais desta máquina, sem valor para a equipe | — |
 | DEC-119 | `.gitattributes` com **`eol=lf`** para todo arquivo de texto | Breno, sobre recomendação | O Prettier exige LF; clone no Windows com `core.autocrlf=true` receberia CRLF e falharia no `pnpm verify` | — |
 | DEC-120 | Commits **sem** linha de coautoria (`Co-Authored-By`) | Breno | — | — |
+
+## 2026-10-08 — Próximas frentes
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-121 | A F22 começa **só in-app**; e-mail fica para quando houver provedor | Breno | — | — |
+| DEC-122 | O produto é um **intermediário**: no futuro integra CNES/DataSUS, Receita Federal, emissor de NFS-e, assinatura eletrônica, gateway de pagamento, gov.br, geocodificação e escalas/ERP das instituições. **No MVP, as mais complicadas ficam simuladas** | Breno | — | — |
+| DEC-123 | **F18 (avaliação de mão dupla) adiada** — não há consenso sobre ela | Breno | — | — |
+| DEC-124 | **F14 segue como simulação**, do melhor jeito possível, sabendo que será substituída pela integração real | Breno | Coerente com a DEC-122 | — |
+| DEC-125 | Hospedagem **provavelmente na Vercel** | Breno | `provisória`: sem confirmação | — |
+| DEC-126 | Ordem de trabalho: primeiro os buracos do fluxo pronto (**F22 in-app** e **F16**), depois **fechar o Sprint 2**; commit por grupo ao fim de cada um | Breno | — | — |
+| DEC-127 | F22 in-app entregue por **polling** (a cada ~20s e ao voltar para a aba) | Breno, sobre recomendação | Funciona em hospedagem serverless e mantém o BFF como porta única (D2) | — |
+| DEC-128 | A notificação é gravada **na mesma transação** da ação de domínio, junto da trilha | Breno, sobre recomendação | Nunca existe ação sem aviso nem aviso sem ação | — |
+| DEC-129 | Notificam: **fila do repasse**, **desfecho do repasse**, **escala e execução** e **verificação de cadastro** | Breno | — | — |
+| DEC-130 | F16: o **executante faz check-in e check-out**; a instituição pode **contestar** dentro de um prazo | Breno, sobre recomendação | Pouco trabalho para a chefia | — |
+| DEC-131 | Plantão que termina **sem check-in** fica **pendente para a instituição**, que confirma ou contesta; nada é presumido | Breno, sobre recomendação | — | — |
+| DEC-132 | Prazo de contestação **72h, configurável por instituição** | Breno, sobre recomendação | Cobre fim de semana | — |
+| DEC-133 | Check-in a partir de **30 min antes** do início; check-out a partir do início; **sem geolocalização** por ora | Breno, sobre recomendação | Passagem de plantão começa antes do horário; geolocalização é integração (DEC-122) | — |
+| DEC-134 | CONTESTADO: a instituição contesta com justificativa, o médico pode responder e **a própria instituição fecha** como EXECUTADO ou CANCELADO; mediação pelo operador fica para depois | Breno, sobre recomendação | — | — |
+| DEC-135 | F10: **convite + candidatura** — a chefia convida pela mesma fila do repasse (aceite confirma direto) e o médico vê vagas compatíveis e se candidata; a chefia escolhe | Breno, sobre recomendação | — | — |
+| DEC-136 | F09 no MVP: critérios **em sequência**, sem pesos — vínculo com a instituição, plantões cumpridos (reais com a F16) e **taxa de resposta aos convites** | Breno, sobre recomendação | Não inventa pesos; quem deixa convite vencer desce | DEC-094 |
+| DEC-137 | **Raio geográfico e proximidade adiados** | Breno, sobre recomendação | Sem integração real de geocodificação (DEC-122) | — |
+
+## 2026-10-09 — F22: notificações in-app
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-138 | Módulo de notificação **global**, como o de auditoria | Claude | Todo módulo de domínio avisa alguém, dentro da própria transação (DEC-128) | — |
+| DEC-139 | O texto do aviso é **gravado pronto** (título e corpo), não montado na leitura | Claude | Aviso é mensagem enviada: se o plantão mudar depois, ele continua dizendo o que disse | — |
+| DEC-140 | Destinatários: aprovação pendente → **chefias** da instituição; instituição aprovada → **admins**; cadastro pendente → **todos os operadores**; o resto → o médico envolvido | Claude | Cada aviso vai para quem age sobre ele | — |
+| DEC-141 | O titular é avisado de **cada** recusa e expiração de convite, não só do fim da fila | Claude | Leitura da DEC-129 ("convite venceu/recusado") | — |
+| DEC-142 | O sino lista os **30 mais recentes**; nada é apagado — retenção fica com a F24 (em aberto) | Claude | — | — |
+| DEC-143 | Polling **pausa com a aba escondida** e retoma ao voltar; falha de rede é silenciosa | Claude | Ninguém está olhando; o próximo foco traz tudo | DEC-127 |
+| DEC-144 | Aviso de outra pessoa responde **404** ao ser marcado como lido | Claude | Mesma regra da ADR-026 | ADR-026 |
+| DEC-145 | Verificação de CRM, aprovação de instituição e cadastro de médico passaram a rodar **em transação** | Claude | Exigência da DEC-128: o aviso precisa da mesma transação da ação | — |
+| DEC-146 | Glifo próprio para os avisos (bloco do trilho com sinal aceso), no topo, ao lado da conta, em todos os modos | Claude | Segue a regra dos glifos do app; convite com prazo curto não pode depender da aba aberta | — |
+| DEC-147 | Os e2e apagam os avisos dos plantões e cadastros que criam | Claude | Senão a demonstração mostraria avisos de coisas que já não existem | — |

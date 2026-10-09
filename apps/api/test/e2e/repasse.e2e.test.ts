@@ -3,7 +3,7 @@ import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { COOKIE_CSRF_TOKEN, HEADER_CSRF_TOKEN } from '@medescala/contracts';
-import { criarAppDeTeste, cookiesDe, valorDoCookie } from './app-de-teste';
+import { criarAppDeTeste, cookiesDe, limparPlantoesDoSetor, valorDoCookie } from './app-de-teste';
 
 const ORIGEM = 'http://localhost:5173';
 const SENHA = process.env['SEED_SENHA_PADRAO'] ?? 'medescala123';
@@ -42,11 +42,11 @@ describe('repasse de plantão (e2e)', () => {
     await prisma.$connect();
     // Só o setor de TESTE; o de demonstração sobrevive. Repasses e convites caem
     // junto, por cascata.
-    await prisma.plantao.deleteMany({ where: { escala: { setorId: SETOR_ID } } });
+    await limparPlantoesDoSetor(prisma, SETOR_ID);
   });
 
   afterAll(async () => {
-    await prisma.plantao.deleteMany({ where: { escala: { setorId: SETOR_ID } } });
+    await limparPlantoesDoSetor(prisma, SETOR_ID);
     await prisma.$disconnect();
     await app?.close();
   });

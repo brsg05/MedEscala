@@ -61,13 +61,17 @@ const CHECAGENS: readonly Checagem[] = [
     sql: `SELECT 1 FROM pg_constraint WHERE conname = 'convite_ativo_tem_prazo'`,
   },
   {
+    nome: 'notificação lida só depois de criada',
+    sql: `SELECT 1 FROM pg_constraint WHERE conname = 'notificacao_lida_depois_de_criada'`,
+  },
+  {
     nome: 'RLS ligada em todas as tabelas de domínio',
     sql: `SELECT 1 FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
           WHERE n.nspname = 'public'
             AND c.relname IN ('usuario','instituicao','perfil_acesso','refresh_token','evento_auditoria',
                               'medico','janela_disponibilidade','unidade','setor','escala','plantao','repasse',
-                              'convite_repasse')
+                              'convite_repasse','notificacao')
             AND c.relrowsecurity = false`,
   },
 ];

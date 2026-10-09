@@ -10,6 +10,7 @@ import type {
 } from '@medescala/contracts';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { NotificacaoService } from '../notificacao/notificacao.service';
 import {
   MedicoNaoEncontradoPorCrmError,
   DisponibilidadeNaoEncontradaError,
@@ -29,6 +30,7 @@ export class CredenciamentoService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditoria: AuditoriaService,
+    private readonly notificacoes: NotificacaoService,
   ) {}
 
   async cadastrar(usuarioId: string, dados: CriarMedicoRequest): Promise<MedicoResponse> {
@@ -48,18 +50,39 @@ export class CredenciamentoService {
       );
     }
 
-    const medico = await this.prisma.medico.create({
-      data: { usuarioId, crm: dados.crm, crmUf: dados.crmUf, especialidade: dados.especialidade },
-      include: { usuario: { select: { nome: true } } },
-    });
+    const medico = await this.prisma.$transaction(async (tx) => {
+      const criado = await tx.medico.create({
+        data: {
+          usuarioId,
+          crm: dados.crm,
+          crmUf: dados.crmUf,
+          especialidade: dados.especialidade,
+        },
+        include: { usuario: { select: { nome: true } } },
+      });
 
-    await this.auditoria.registrar({
-      acao: 'MEDICO_CADASTRADO',
-      entidade: 'Medico',
-      entidadeId: medico.id,
-      atorId: usuarioId,
-      estadoNovo: 'NAO_VERIFICADO',
-      payload: { crm: medico.crm, crmUf: medico.crmUf },
+      await this.auditoria.registrar(
+        {
+          acao: 'MEDICO_CADASTRADO',
+          entidade: 'Medico',
+          entidadeId: criado.id,
+          atorId: usuarioId,
+          estadoNovo: 'NAO_VERIFICADO',
+          payload: { crm: criado.crm, crmUf: criado.crmUf },
+        },
+        tx,
+      );
+
+      await this.notificacoes.notificar(tx, [{ operadores: true }], {
+        tipo: 'CADASTRO_PENDENTE',
+        titulo: 'CRM para conferir',
+        corpo: `${criado.usuario.nome} — CRM/${criado.crmUf} ${criado.crm}.`,
+        link: '/operador',
+        entidade: 'Medico',
+        entidadeId: criado.id,
+      });
+
+      return criado;
     });
 
     return this.paraResposta(medico);
@@ -227,19 +250,33 @@ export class CredenciamentoService {
       return;
     }
 
-    await this.prisma.medico.update({
-      where: { id: medicoId },
-      data: { verificado: true, verificadoEm: new Date(), verificadoPorId: operadorId },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.medico.update({
+        where: { id: medicoId },
+        data: { verificado: true, verificadoEm: new Date(), verificadoPorId: operadorId },
+      });
 
-    await this.auditoria.registrar({
-      acao: 'CRM_VERIFICADO',
-      entidade: 'Medico',
-      entidadeId: medicoId,
-      atorId: operadorId,
-      atorPerfil: 'OPERADOR_PLATAFORMA',
-      estadoAnterior: 'NAO_VERIFICADO',
-      estadoNovo: 'VERIFICADO',
+      await this.auditoria.registrar(
+        {
+          acao: 'CRM_VERIFICADO',
+          entidade: 'Medico',
+          entidadeId: medicoId,
+          atorId: operadorId,
+          atorPerfil: 'OPERADOR_PLATAFORMA',
+          estadoAnterior: 'NAO_VERIFICADO',
+          estadoNovo: 'VERIFICADO',
+        },
+        tx,
+      );
+
+      await this.notificacoes.notificar(tx, [{ medicoId }], {
+        tipo: 'CRM_VERIFICADO',
+        titulo: 'CRM conferido',
+        corpo: `A plataforma conferiu seu CRM/${medico.crmUf} ${medico.crm}. Você já pode ser escalado e convidado para plantões.`,
+        link: '/disponibilidade',
+        entidade: 'Medico',
+        entidadeId: medicoId,
+      });
     });
   }
 

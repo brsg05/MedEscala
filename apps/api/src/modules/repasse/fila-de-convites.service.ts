@@ -2,10 +2,13 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import type { OrigemConvite, Prisma } from '@prisma/client';
 import type { Queue } from 'bullmq';
+import { formatarHora } from '@medescala/contracts';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { EscalaService } from '../escala/escala.service';
 import { InstituicaoService } from '../escala/instituicao.service';
+import { NotificacaoService } from '../notificacao/notificacao.service';
+import { descreverPlantao } from '../notificacao/textos';
 import { IndicacaoInvalidaError } from '../../shared/errors/dominio-negocio.error';
 import { ordenarParaConvite, TAMANHO_DO_LOTE } from './domain/ranking';
 
@@ -26,6 +29,8 @@ interface PlantaoDaFila {
   medicoExecutanteId: string | null;
   instituicaoId: string;
   prazoConviteMinutos: number;
+  /** Onde e quando, para o texto dos avisos (F22). */
+  descricao: string;
 }
 
 /**
@@ -53,6 +58,7 @@ export class FilaDeConvitesService implements OnModuleInit {
     private readonly auditoria: AuditoriaService,
     private readonly escala: EscalaService,
     private readonly instituicao: InstituicaoService,
+    private readonly notificacoes: NotificacaoService,
     @InjectQueue(FILA_DE_CONVITES) private readonly fila: Queue<JobDeVencimento>,
   ) {}
 
@@ -158,7 +164,7 @@ export class FilaDeConvitesService implements OnModuleInit {
       // O plantão começou: não há mais o que repassar. O titular seguiu
       // responsável o tempo todo (RN01), e continua executante.
       if (agora >= plantao.inicio) {
-        await this.encerrarPorInicioDoPlantao(tx, repasseId, plantao.id);
+        await this.encerrarPorInicioDoPlantao(tx, repasseId, repasse.medicoTitularId, plantao);
         return;
       }
 
@@ -183,6 +189,15 @@ export class FilaDeConvitesService implements OnModuleInit {
           },
           tx,
         );
+
+        await this.notificacoes.notificar(tx, [{ medicoId: repasse.medicoTitularId }], {
+          tipo: 'CONVITE_EXPIRADO',
+          titulo: 'Convite expirou',
+          corpo: `${await this.nomeDoMedico(tx, ativo.medicoId)} não respondeu a tempo ao convite para ${plantao.descricao}.`,
+          link: '/repasses',
+          entidade: 'Repasse',
+          entidadeId: repasseId,
+        });
       }
 
       let proximo = await this.proximoNaFila(tx, repasseId);
@@ -209,6 +224,14 @@ export class FilaDeConvitesService implements OnModuleInit {
             },
             tx,
           );
+          await this.notificacoes.notificar(tx, [{ medicoId: repasse.medicoTitularId }], {
+            tipo: 'FILA_ESGOTADA',
+            titulo: 'Ninguém aceitou o repasse',
+            corpo: `A fila de convites para ${plantao.descricao} acabou sem aceite. Indique outras pessoas ou cancele o pedido — o plantão continua seu.`,
+            link: '/repasses',
+            entidade: 'Repasse',
+            entidadeId: repasseId,
+          });
           return;
         }
 
@@ -239,6 +262,15 @@ export class FilaDeConvitesService implements OnModuleInit {
         },
         tx,
       );
+
+      await this.notificacoes.notificar(tx, [{ medicoId: proximo.medicoId }], {
+        tipo: 'CONVITE_RECEBIDO',
+        titulo: 'Convite para cobrir plantão',
+        corpo: `${plantao.descricao}. Responda até ${formatarHora(prazoAte)}.`,
+        link: '/decisoes',
+        entidade: 'Repasse',
+        entidadeId: repasseId,
+      });
 
       agendamento.valor = { conviteId: proximo.id, prazoAte };
     });
@@ -330,6 +362,11 @@ export class FilaDeConvitesService implements OnModuleInit {
     const instituicao = p.escala.setor.unidade.instituicao;
 
     return {
+      descricao: descreverPlantao({
+        setor: p.escala.setor.nome,
+        unidade: p.escala.setor.unidade.nome,
+        inicio: p.inicio,
+      }),
       id: p.id,
       inicio: p.inicio,
       fim: p.fim,
@@ -421,11 +458,21 @@ export class FilaDeConvitesService implements OnModuleInit {
     return lote.length;
   }
 
+  private async nomeDoMedico(tx: Tx, medicoId: string): Promise<string> {
+    const m = await tx.medico.findUniqueOrThrow({
+      where: { id: medicoId },
+      select: { usuario: { select: { nome: true } } },
+    });
+    return m.usuario.nome;
+  }
+
   private async encerrarPorInicioDoPlantao(
     tx: Tx,
     repasseId: string,
-    plantaoId: string,
+    titularId: string,
+    plantao: PlantaoDaFila,
   ): Promise<void> {
+    const plantaoId = plantao.id;
     await tx.conviteRepasse.updateMany({
       where: { repasseId, status: { in: ['NA_FILA', 'ATIVO'] } },
       data: { status: 'CANCELADO' },
@@ -443,5 +490,14 @@ export class FilaDeConvitesService implements OnModuleInit {
       },
       tx,
     );
+
+    await this.notificacoes.notificar(tx, [{ medicoId: titularId }], {
+      tipo: 'REPASSE_CANCELADO',
+      titulo: 'Repasse encerrado sem substituto',
+      corpo: `O plantão ${plantao.descricao} começou sem substituto aprovado. Você segue como executante.`,
+      link: '/escala',
+      entidade: 'Repasse',
+      entidadeId: repasseId,
+    });
   }
 }

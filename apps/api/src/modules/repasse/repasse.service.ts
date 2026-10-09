@@ -18,6 +18,8 @@ import { aceitaRepasse } from '../escala/domain/plantao.state';
 import { respeitaAntecedenciaMinima } from '../escala/domain/agenda.rules';
 import { EM_ABERTO, podeTransicionar } from './domain/repasse.state';
 import { FilaDeConvitesService } from './fila-de-convites.service';
+import { NotificacaoService } from '../notificacao/notificacao.service';
+import { descreverPlantao } from '../notificacao/textos';
 
 const RESUMO_MEDICO = { include: { usuario: { select: { nome: true } } } } as const;
 
@@ -31,6 +33,18 @@ const REPASSE_COMPLETO = {
 } as const;
 
 type RepasseCompleto = Prisma.RepasseGetPayload<{ include: typeof REPASSE_COMPLETO }>;
+
+/** Onde e quando, para o texto dos avisos (F22). */
+function descricao(p: {
+  inicio: Date;
+  escala: { setor: { nome: string; unidade: { nome: string } } };
+}): string {
+  return descreverPlantao({
+    setor: p.escala.setor.nome,
+    unidade: p.escala.setor.unidade.nome,
+    inicio: p.inicio,
+  });
+}
 
 function resumo(m: { id: string; crm: string; crmUf: string; usuario: { nome: string } }) {
   return { id: m.id, nome: m.usuario.nome, crm: m.crm, crmUf: m.crmUf };
@@ -57,6 +71,7 @@ export class RepasseService {
     private readonly auditoria: AuditoriaService,
     private readonly escala: EscalaService,
     private readonly fila: FilaDeConvitesService,
+    private readonly notificacoes: NotificacaoService,
   ) {}
 
   /**
@@ -178,6 +193,8 @@ export class RepasseService {
     // RN03 — a agenda pode ter mudado desde o convite.
     await this.escala.exigirAgendaLivre(medicoId, { inicio: plantao.inicio, fim: plantao.fim });
 
+    const substituto = await this.nomeDoMedico(medicoId);
+
     await this.prisma.$transaction(async (tx) => {
       await tx.conviteRepasse.update({
         where: { id: convite.id },
@@ -214,6 +231,25 @@ export class RepasseService {
         },
         tx,
       );
+
+      await this.notificacoes.notificar(tx, [{ medicoId: repasse.medicoTitularId }], {
+        tipo: 'SUBSTITUTO_ACEITOU',
+        titulo: 'Substituto encontrado',
+        corpo: `${substituto} aceitou cobrir ${descricao(plantao)}. Falta a aprovação da instituição — até lá, o plantão continua seu.`,
+        link: '/repasses',
+        entidade: 'Repasse',
+        entidadeId: repasseId,
+      });
+
+      const instituicaoId = plantao.escala.setor.unidade.instituicaoId;
+      await this.notificacoes.notificar(tx, [{ chefiasDe: instituicaoId }], {
+        tipo: 'APROVACAO_PENDENTE',
+        titulo: 'Substituição aguardando aprovação',
+        corpo: `${repasse.titular.usuario.nome} → ${substituto}, ${descricao(plantao)}.`,
+        link: `/instituicao/${instituicaoId}/decisoes`,
+        entidade: 'Repasse',
+        entidadeId: repasseId,
+      });
     });
 
     this.fila.cancelarVencimento(convite.id);
@@ -233,10 +269,23 @@ export class RepasseService {
       throw new NaoEhConvidadoDaVezError();
     }
 
+    const repasse = await this.exigir(repasseId);
+    const plantao = await this.escala.buscarPlantao(repasse.plantaoId);
+    const convidado = await this.nomeDoMedico(medicoId);
+
     await this.prisma.$transaction(async (tx) => {
       await tx.conviteRepasse.update({
         where: { id: convite.id },
         data: { status: 'RECUSADO', respondidoEm: new Date() },
+      });
+
+      await this.notificacoes.notificar(tx, [{ medicoId: repasse.medicoTitularId }], {
+        tipo: 'CONVITE_RECUSADO',
+        titulo: 'Convite recusado',
+        corpo: `${convidado} recusou o convite para ${descricao(plantao)}. A fila segue.`,
+        link: '/repasses',
+        entidade: 'Repasse',
+        entidadeId: repasseId,
       });
 
       await this.auditoria.registrar(
@@ -335,6 +384,26 @@ export class RepasseService {
         },
         tx,
       );
+
+      const nomeSubstituto = repasse.substituto?.usuario.nome ?? 'O substituto';
+
+      await this.notificacoes.notificar(tx, [{ medicoId: repasse.medicoTitularId }], {
+        tipo: 'REPASSE_APROVADO',
+        titulo: 'Repasse aprovado',
+        corpo: `${nomeSubstituto} assume ${descricao(plantao)}. A escala oficial foi atualizada.`,
+        link: '/repasses',
+        entidade: 'Repasse',
+        entidadeId: repasseId,
+      });
+
+      await this.notificacoes.notificar(tx, [{ medicoId: substitutoId }], {
+        tipo: 'REPASSE_APROVADO',
+        titulo: 'Plantão confirmado para você',
+        corpo: `A instituição aprovou a substituição: você assume ${descricao(plantao)}.`,
+        link: '/escala',
+        entidade: 'Repasse',
+        entidadeId: repasseId,
+      });
     });
 
     this.logger.log(
@@ -404,6 +473,27 @@ export class RepasseService {
         },
         tx,
       );
+
+      const nomeSubstituto = repasse.substituto?.usuario.nome ?? 'O substituto';
+
+      await this.notificacoes.notificar(tx, [{ medicoId: repasse.medicoTitularId }], {
+        tipo: 'REPASSE_RECUSADO',
+        titulo: 'Substituto recusado pela instituição',
+        corpo: `A instituição recusou ${nomeSubstituto} para ${descricao(plantao)}: "${justificativa}". A fila de convites continua.`,
+        link: '/repasses',
+        entidade: 'Repasse',
+        entidadeId: repasseId,
+      });
+
+      if (repasse.medicoSubstitutoId !== null) {
+        await this.notificacoes.notificar(tx, [{ medicoId: repasse.medicoSubstitutoId }], {
+          tipo: 'REPASSE_RECUSADO',
+          titulo: 'Substituição não aprovada',
+          corpo: `A instituição não aprovou você para ${descricao(plantao)}: "${justificativa}".`,
+          entidade: 'Repasse',
+          entidadeId: repasseId,
+        });
+      }
     });
 
     await this.fila.avancar(repasseId);
@@ -426,8 +516,9 @@ export class RepasseService {
 
     const ativos = await this.prisma.conviteRepasse.findMany({
       where: { repasseId, status: 'ATIVO' },
-      select: { id: true },
+      select: { id: true, medicoId: true },
     });
+    const plantao = await this.escala.buscarPlantao(repasse.plantaoId);
 
     await this.prisma.$transaction(async (tx) => {
       await tx.conviteRepasse.updateMany({
@@ -447,6 +538,19 @@ export class RepasseService {
           estadoNovo: 'CANCELADO',
         },
         tx,
+      );
+
+      // Quem estava com o convite na mão precisa saber que ele não vale mais.
+      await this.notificacoes.notificar(
+        tx,
+        ativos.map((c) => ({ medicoId: c.medicoId })),
+        {
+          tipo: 'CONVITE_CANCELADO',
+          titulo: 'Convite cancelado',
+          corpo: `O titular cancelou o pedido de repasse de ${descricao(plantao)}.`,
+          entidade: 'Repasse',
+          entidadeId: repasseId,
+        },
       );
     });
 
@@ -514,6 +618,14 @@ export class RepasseService {
       prazoAte: c.prazoAte?.toISOString() ?? null,
       respondidoEm: c.respondidoEm?.toISOString() ?? null,
     }));
+  }
+
+  private async nomeDoMedico(medicoId: string): Promise<string> {
+    const m = await this.prisma.medico.findUniqueOrThrow({
+      where: { id: medicoId },
+      select: { usuario: { select: { nome: true } } },
+    });
+    return m.usuario.nome;
   }
 
   private async exigir(repasseId: string): Promise<RepasseCompleto> {

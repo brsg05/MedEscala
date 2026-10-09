@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 import { Queue } from 'bullmq';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { COOKIE_CSRF_TOKEN, HEADER_CSRF_TOKEN } from '@medescala/contracts';
-import { criarAppDeTeste, cookiesDe, valorDoCookie } from './app-de-teste';
+import { criarAppDeTeste, cookiesDe, limparPlantoesDoSetor, valorDoCookie } from './app-de-teste';
 
 const ORIGEM = 'http://localhost:5173';
 const SENHA = process.env['SEED_SENHA_PADRAO'] ?? 'medescala123';
@@ -44,11 +44,11 @@ describe('fila de convites (e2e)', () => {
     app = await criarAppDeTeste();
     prisma = new PrismaClient();
     await prisma.$connect();
-    await prisma.plantao.deleteMany({ where: { escala: { setorId: SETOR_ID } } });
+    await limparPlantoesDoSetor(prisma, SETOR_ID);
   });
 
   afterAll(async () => {
-    await prisma.plantao.deleteMany({ where: { escala: { setorId: SETOR_ID } } });
+    await limparPlantoesDoSetor(prisma, SETOR_ID);
     await prisma.janelaDisponibilidade.deleteMany({
       where: { medico: { usuario: { email: { in: [TITULAR, SUBSTITUTO, TERCEIRO] } } } },
     });

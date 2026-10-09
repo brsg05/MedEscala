@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { CadastroRequest } from '@medescala/contracts';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { NotificacaoService } from '../notificacao/notificacao.service';
 import {
   EmailJaCadastradoError,
   InstituicaoJaCadastradaError,
@@ -31,6 +32,7 @@ export class CadastroService {
     private readonly prisma: PrismaService,
     private readonly supabase: SupabaseAuthService,
     private readonly auditoria: AuditoriaService,
+    private readonly notificacoes: NotificacaoService,
   ) {}
 
   async cadastrar(dados: CadastroRequest): Promise<void> {
@@ -89,6 +91,15 @@ export class CadastroService {
             },
             tx,
           );
+
+          await this.notificacoes.notificar(tx, [{ operadores: true }], {
+            tipo: 'CADASTRO_PENDENTE',
+            titulo: 'CRM para conferir',
+            corpo: `${dados.nome} — CRM/${dados.crmUf} ${dados.crm}.`,
+            link: '/operador',
+            entidade: 'Medico',
+            entidadeId: medico.id,
+          });
           return;
         }
 
@@ -114,6 +125,15 @@ export class CadastroService {
           },
           tx,
         );
+
+        await this.notificacoes.notificar(tx, [{ operadores: true }], {
+          tipo: 'CADASTRO_PENDENTE',
+          titulo: 'CNPJ para conferir',
+          corpo: `${dados.instituicaoNome} — cadastrada por ${dados.nome}.`,
+          link: '/operador',
+          entidade: 'Instituicao',
+          entidadeId: instituicao.id,
+        });
       });
     } catch (erro) {
       await this.supabase.removerCredencial(usuarioId);

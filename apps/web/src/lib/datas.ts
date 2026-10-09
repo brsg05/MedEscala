@@ -27,3 +27,16 @@ export function inicioDoDia(data: Date): Date {
   d.setHours(0, 0, 0, 0);
   return d;
 }
+
+/**
+ * "agora", "há 5 min", "há 3 h"; passado de um dia, a data e a hora. Para avisos
+ * (F22), onde o que importa é se aconteceu agora há pouco.
+ */
+export function haQuanto(instante: string, agora: Date, dataHora: (iso: string) => string): string {
+  const minutos = Math.floor((agora.getTime() - new Date(instante).getTime()) / 60_000);
+
+  if (minutos < 1) return 'agora';
+  if (minutos < 60) return `há ${String(minutos)} min`;
+  if (minutos < 24 * 60) return `há ${String(Math.floor(minutos / 60))} h`;
+  return dataHora(instante);
+}

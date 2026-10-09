@@ -5,7 +5,7 @@ import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { COOKIE_CSRF_TOKEN, HEADER_CSRF_TOKEN } from '@medescala/contracts';
 import { SupabaseAuthService } from '../../src/modules/auth/supabase-auth.service';
-import { criarAppDeTeste, cookiesDe, valorDoCookie } from './app-de-teste';
+import { criarAppDeTeste, cookiesDe, limparPlantoesDoSetor, valorDoCookie } from './app-de-teste';
 
 const ORIGEM = 'http://localhost:5173';
 const SENHA = process.env['SEED_SENHA_PADRAO'] ?? 'medescala123';
@@ -35,14 +35,27 @@ describe('instituição e cadastro aberto (e2e)', () => {
     app = await criarAppDeTeste();
     prisma = new PrismaClient();
     await prisma.$connect();
-    await prisma.plantao.deleteMany({ where: { escala: { setorId: SETOR_ID } } });
+    await limparPlantoesDoSetor(prisma, SETOR_ID);
   });
 
   afterAll(async () => {
-    await prisma.plantao.deleteMany({ where: { escala: { setorId: SETOR_ID } } });
+    await limparPlantoesDoSetor(prisma, SETOR_ID);
     await prisma.janelaDisponibilidade.deleteMany({
       where: { medico: { usuario: { email: { in: emailsCriados } } } },
     });
+    // Os avisos "CRM/CNPJ para conferir" (F22) foram para o operador da
+    // demonstração; sem isto, ele veria cadastros que já não existem.
+    const [instituicoes, medicos] = await Promise.all([
+      prisma.instituicao.findMany({ where: { cnpj: { in: cnpjsCriados } }, select: { id: true } }),
+      prisma.medico.findMany({
+        where: { usuario: { email: { in: emailsCriados } } },
+        select: { id: true },
+      }),
+    ]);
+    await prisma.notificacao.deleteMany({
+      where: { entidadeId: { in: [...instituicoes, ...medicos].map((e) => e.id) } },
+    });
+
     // Instituições criadas por cadastro: os perfis caem por cascata.
     await prisma.instituicao.deleteMany({ where: { cnpj: { in: cnpjsCriados } } });
 
@@ -293,6 +306,15 @@ describe('instituição e cadastro aberto (e2e)', () => {
       const inst = await prisma.instituicao.findUniqueOrThrow({ where: { cnpj } });
       const operador = await entrar('operador@medescala.test');
 
+      // F22 — o cadastro avisou o operador, na mesma transação (DEC-128).
+      const doOperador = await http()
+        .get('/notificacoes')
+        .set('Cookie', operador.cookies)
+        .expect(200);
+      expect(
+        (doOperador.body as { itens: Array<{ tipo: string; link: string | null }> }).itens,
+      ).toContainEqual(expect.objectContaining({ tipo: 'CADASTRO_PENDENTE', link: '/operador' }));
+
       await comSessao(http().post(`/operador/instituicoes/${inst.id}/aprovar`), operador)
         .send({})
         .expect(204);
@@ -300,6 +322,13 @@ describe('instituição e cadastro aberto (e2e)', () => {
       expect((await prisma.instituicao.findUniqueOrThrow({ where: { cnpj } })).status).toBe(
         'ATIVA',
       );
+
+      // ...e a aprovação avisou quem administra a instituição.
+      const gestor = await entrar(email, 'senha-segura-1');
+      const doGestor = await http().get('/notificacoes').set('Cookie', gestor.cookies).expect(200);
+      expect((doGestor.body as { itens: Array<{ tipo: string }> }).itens).toEqual([
+        expect.objectContaining({ tipo: 'INSTITUICAO_APROVADA' }),
+      ]);
     });
 
     it('médico NÃO consegue aprovar instituição nem ver pendências', async () => {

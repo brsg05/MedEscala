@@ -1,5 +1,6 @@
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
+import type { PrismaClient } from '@prisma/client';
 import { AppModule } from '../../src/app.module';
 import { configurarApp } from '../../src/configurar-app';
 import { RotaProtegidaController } from './rota-protegida.controller';
@@ -31,4 +32,21 @@ export function cookiesDe(resposta: { headers: Record<string, unknown> }): strin
 export function valorDoCookie(cookies: readonly string[], nome: string): string | undefined {
   const achado = cookies.find((c) => c.startsWith(`${nome}=`));
   return achado?.slice(nome.length + 1);
+}
+
+/**
+ * Apaga os plantões que uma suíte criou no setor de teste — e os avisos (F22)
+ * que eles geraram. Sem a segunda parte, a `chefia@` da demonstração ficaria
+ * com "substituição aguardando aprovação" de plantões que já não existem: o
+ * aviso guarda o id da entidade, mas não tem FK para ela.
+ */
+export async function limparPlantoesDoSetor(prisma: PrismaClient, setorId: string): Promise<void> {
+  const plantoes = await prisma.plantao.findMany({
+    where: { escala: { setorId } },
+    select: { id: true, repasses: { select: { id: true } } },
+  });
+  const ids = plantoes.flatMap((p) => [p.id, ...p.repasses.map((r) => r.id)]);
+
+  await prisma.notificacao.deleteMany({ where: { entidadeId: { in: ids } } });
+  await prisma.plantao.deleteMany({ where: { escala: { setorId } } });
 }

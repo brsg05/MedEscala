@@ -54,6 +54,7 @@ model Usuario {
   perfis        PerfilAcesso[]
   refreshTokens RefreshToken[]
   medico        Medico?
+  notificacoes  Notificacao[]
 
   @@map("usuario")
 }
@@ -470,3 +471,52 @@ model ConviteRepasse {
   @@map("convite_repasse")
 }
 
+// --- F22 — notificações in-app (DEC-121, DEC-127 a DEC-129) ------------------
+
+/// O que aconteceu, para o web escolher ícone e cor. O texto da notificação é
+/// gravado pronto (`titulo`, `corpo`): é uma mensagem enviada, não uma visão
+/// derivada — se o plantão mudar depois, o aviso continua dizendo o que disse.
+enum TipoNotificacao {
+  // fila do repasse
+  CONVITE_RECEBIDO
+  CONVITE_CANCELADO
+  SUBSTITUTO_ACEITOU
+  CONVITE_RECUSADO
+  CONVITE_EXPIRADO
+  FILA_ESGOTADA
+  APROVACAO_PENDENTE
+  // desfecho do repasse
+  REPASSE_APROVADO
+  REPASSE_RECUSADO
+  REPASSE_CANCELADO
+  // escala
+  MEDICO_ESCALADO
+  // verificação de cadastro
+  CRM_VERIFICADO
+  INSTITUICAO_APROVADA
+  CADASTRO_PENDENTE
+}
+
+/// Gravada na MESMA transação da ação que a provoca (DEC-128): não existe ação
+/// sem aviso, nem aviso de ação que não aconteceu.
+model Notificacao {
+  id        String          @id @default(uuid()) @db.Uuid
+  usuarioId String          @map("usuario_id") @db.Uuid
+  tipo      TipoNotificacao
+  titulo    String
+  corpo     String
+  /// Rota do web para onde o aviso leva; nula quando não há tela a abrir.
+  link      String?
+
+  entidade   String?
+  entidadeId String? @map("entidade_id") @db.Uuid
+
+  criadaEm DateTime  @default(now()) @map("criada_em") @db.Timestamptz(6)
+  lidaEm   DateTime? @map("lida_em") @db.Timestamptz(6)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId, criadaEm(sort: Desc)])
+  @@index([usuarioId, lidaEm])
+  @@map("notificacao")
+}

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import type { PlantaoResponse } from '@medescala/contracts';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { NotificacaoService } from '../notificacao/notificacao.service';
+import { descreverPlantao } from '../notificacao/textos';
 import {
   ForaDoEscopoDaInstituicaoError,
   InstituicaoPendenteError,
@@ -28,6 +30,7 @@ export class AtribuicaoService {
     private readonly prisma: PrismaService,
     private readonly auditoria: AuditoriaService,
     private readonly escala: EscalaService,
+    private readonly notificacoes: NotificacaoService,
   ) {}
 
   async escalarMedico(
@@ -108,6 +111,19 @@ export class AtribuicaoService {
         },
         tx,
       );
+
+      await this.notificacoes.notificar(tx, [{ medicoId }], {
+        tipo: 'MEDICO_ESCALADO',
+        titulo: 'Você foi escalado',
+        corpo: `${descreverPlantao({
+          setor: plantao.escala.setor.nome,
+          unidade: plantao.escala.setor.unidade.nome,
+          inicio: plantao.inicio,
+        })} — ${plantao.escala.setor.unidade.instituicao.nome}.`,
+        link: '/escala',
+        entidade: 'Plantao',
+        entidadeId: plantaoId,
+      });
 
       return p;
     });

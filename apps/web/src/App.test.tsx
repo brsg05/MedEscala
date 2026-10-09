@@ -470,3 +470,47 @@ describe('fila de convites do repasse (DEC-087)', () => {
     expect(screen.getByText('convidado pelo matching, ainda não respondeu')).toBeDefined();
   });
 });
+
+describe('avisos in-app (F22)', () => {
+  const AVISO = {
+    id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    tipo: 'CONVITE_RECEBIDO',
+    titulo: 'Convite para cobrir plantão',
+    corpo: 'Sala Vermelha · UPA Torrões, 12/10 19:00. Responda até 20:13.',
+    link: '/decisoes',
+    criadaEm: new Date().toISOString(),
+    lida: false,
+  };
+
+  it('o sino mostra quantos avisos não foram lidos', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [], alertaCargaHoraria: null }),
+      '/notificacoes': () => json(200, { naoLidas: 3, itens: [AVISO] }),
+    });
+    render(<App />);
+
+    expect(await screen.findByRole('button', { name: 'Avisos, 3 não lidos' })).toBeDefined();
+  });
+
+  it('abrir um aviso marca como lido e leva à tela dele', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [], alertaCargaHoraria: null }),
+      '/notificacoes': () => json(200, { naoLidas: 1, itens: [AVISO] }),
+      [`/notificacoes/${AVISO.id}/lida`]: () => new Response(null, { status: 204 }),
+      '/decisoes': () => json(200, []),
+    });
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Avisos, 1 não lido' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Convite para cobrir plantão/u }));
+
+    expect(await screen.findByText('Nada esperando por você')).toBeDefined();
+    expect(
+      vi
+        .mocked(fetch)
+        .mock.calls.some(([url]) => String(url).includes(`/notificacoes/${AVISO.id}/lida`)),
+    ).toBe(true);
+  });
+});

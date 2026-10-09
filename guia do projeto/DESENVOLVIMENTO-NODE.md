@@ -554,6 +554,10 @@ POST   /plantoes/:id/avaliacoes          F18
 GET    /plantoes/:id/contrato            F13  (PDF)
 GET    /plantoes/:id/documento-fiscal    F14  (rascunho SIMULADO)
 GET    /plantoes/:id/auditoria           F23
+
+GET    /notificacoes                     F22  (30 mais recentes + não lidas; polling — DEC-127)
+POST   /notificacoes/:id/lida
+POST   /notificacoes/lidas
 ```
 
 Os schemas Zod de request e response ficam em `packages/contracts` e são importados pelo

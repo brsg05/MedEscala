@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import type { UsuarioAutenticado } from '@medescala/contracts';
 import { cn } from '@/lib/utils';
 import { lembrarModo, modoDaRota, modosDisponiveis, type Modo } from '@/modo';
+import { Avisos } from './Avisos';
 
 /**
  * Glifos desenhados à mão em vez de biblioteca de ícones.
@@ -171,13 +172,16 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
           <SeletorDeModo modos={modos} ativo={ativo} className="min-w-0 md:hidden" compacto />
           <div className="hidden md:block" />
 
-          <NavLink
-            to="/conta"
-            className="dado flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tinta-3 text-xs font-semibold text-gelo-2 transition-colors hover:bg-borda"
-            aria-label={`Conta de ${usuario.nome}`}
-          >
-            {iniciais}
-          </NavLink>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <Avisos />
+            <NavLink
+              to="/conta"
+              className="dado flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tinta-3 text-xs font-semibold text-gelo-2 transition-colors hover:bg-borda"
+              aria-label={`Conta de ${usuario.nome}`}
+            >
+              {iniciais}
+            </NavLink>
+          </div>
         </header>
 
         {/* `pb-24` abre espaço para a barra inferior não cobrir o último elemento. */}

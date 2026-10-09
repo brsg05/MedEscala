@@ -15,6 +15,7 @@ import {
   SemAcessoAoRecursoError,
 } from '../../shared/errors/dominio-negocio.error';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { NotificacaoService } from '../notificacao/notificacao.service';
 import { EscalaService } from './escala.service';
 
 /** Instituições em que o usuário tem algum dos perfis pedidos (ADR-006). */
@@ -45,6 +46,7 @@ export class InstituicaoService {
     private readonly prisma: PrismaService,
     private readonly escala: EscalaService,
     private readonly auditoria: AuditoriaService,
+    private readonly notificacoes: NotificacaoService,
   ) {}
 
   /** DEC-090 — o admin ajusta o prazo de cada convite da fila de substitutos. */
@@ -104,19 +106,33 @@ export class InstituicaoService {
       return;
     }
 
-    await this.prisma.instituicao.update({
-      where: { id: instituicaoId },
-      data: { status: 'ATIVA', verificadaEm: new Date(), verificadaPorId: operadorId },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.instituicao.update({
+        where: { id: instituicaoId },
+        data: { status: 'ATIVA', verificadaEm: new Date(), verificadaPorId: operadorId },
+      });
 
-    await this.auditoria.registrar({
-      acao: 'INSTITUICAO_APROVADA',
-      entidade: 'Instituicao',
-      entidadeId: instituicaoId,
-      atorId: operadorId,
-      atorPerfil: 'OPERADOR_PLATAFORMA',
-      estadoAnterior: 'PENDENTE',
-      estadoNovo: 'ATIVA',
+      await this.auditoria.registrar(
+        {
+          acao: 'INSTITUICAO_APROVADA',
+          entidade: 'Instituicao',
+          entidadeId: instituicaoId,
+          atorId: operadorId,
+          atorPerfil: 'OPERADOR_PLATAFORMA',
+          estadoAnterior: 'PENDENTE',
+          estadoNovo: 'ATIVA',
+        },
+        tx,
+      );
+
+      await this.notificacoes.notificar(tx, [{ adminsDe: instituicaoId }], {
+        tipo: 'INSTITUICAO_APROVADA',
+        titulo: 'Instituição aprovada',
+        corpo: `A plataforma conferiu o CNPJ de ${inst.nome}. Já é possível publicar vagas e escalar médicos.`,
+        link: `/instituicao/${instituicaoId}/escala`,
+        entidade: 'Instituicao',
+        entidadeId: instituicaoId,
+      });
     });
   }
 
