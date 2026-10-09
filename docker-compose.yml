@@ -1,0 +1,18 @@
+# Só o Redis (DEC-098). O Postgres e o Auth vêm do `supabase start`.
+#
+# O Redis guarda os jobs que vencem os convites da fila de substitutos (ADR-027).
+# Ele ACELERA a fila, não decide: o prazo de cada convite está no Postgres, e a
+# api trata como vencido qualquer convite com prazo passado mesmo se um job se
+# perder (DEC-097). Por isso não há volume persistente — perder o Redis não perde
+# estado de negócio.
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: medescala-redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
