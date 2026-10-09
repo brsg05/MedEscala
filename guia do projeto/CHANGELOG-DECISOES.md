@@ -338,3 +338,13 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | DEC-216 | Prestador na nota: **CNPJ do médico** quando cadastrado (F02), senão o CRM | Claude | NFS-e é de pessoa jurídica; sem CNPJ, o rascunho avisa dos dados incompletos | F02 |
 | DEC-217 | Seed: o hospital da demonstração **aceita o modelo B**; os plantões da Ana nascem com reserva, e o de anteontem com valor retido e rascunho de nota | Claude | A demonstração precisa mostrar o fluxo | — |
 | DEC-218 | O cancelamento de uma reserva (modelo A, contestação) também **entra na trilha** | Claude | ADR-007: toda transição de domínio é registrada | ADR-007 |
+
+## 2026-10-09 — Preparação para a apresentação
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-219 | A interface **não cita requisito** (F__, RN__, DEC, sprint) **nem explica como uma função funciona**; mantém só rótulos de estado e avisos que pedem decisão (ex.: dupla tributação do modelo B) | Breno | Requisito e regra são documentação, não interface | — |
+| DEC-220 | Textos removidos/encurtados: aviso de responsabilidade repetido nos cartões, explicação da sessão, da trilha imutável, da conferência de CRM/CNPJ no cadastro, do "check-in vale como aceite", da fila de convites e dos prazos; "matching" virou "automático" | Claude | Leitura da DEC-219 tela a tela | DEC-219 |
+| DEC-221 | Cláusulas do termo sem referência a regra (texto do modelo **v2**); rodapé do PDF e observação da nota idem | Claude | O termo é documento para as partes, não para a banca | DEC-198 |
+| DEC-222 | A trilha mostra **todo** evento com rótulo legível; evento sem rótulo cai num texto legível, nunca no código cru | Claude | Os eventos de pagamento, nota e vaga apareciam como códigos | F23 |
+| DEC-223 | Seed com **cenários de uso**: segundo hospital (Santa Luzia, com chefia própria e ISS retido), 8 médicos novos (2 aguardando conferência), escala de hoje viva (em execução, vaga com candidaturas, convite correndo), convites e repasse esperando a Ana, contestação para ela responder, histórico pago e repasse aprovado com termo, duas aprovações para a chefia, avisos não lidos | Claude | Apresentação: o sistema em uso, não vazio. Em setores próprios, recriados a cada seed — os e2e não os apagam | — |

@@ -12,6 +12,7 @@
 import { PrismaClient, Perfil } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 import { calcularRetencoes } from '@medescala/contracts';
+import { semearCenarios } from './seed-cenarios';
 import type { Prisma } from '@prisma/client';
 import {
   hashDe,
@@ -256,9 +257,16 @@ async function principal(): Promise<void> {
 
   console.log(`unidade      ${unidade.nome}`);
   console.log(`setor        ${setor.nome} (${setor.especialidadeExigida})`);
+  // A Ana com dados fiscais completos: as notas dela saem com CNPJ e regime.
+  await prisma.medico.updateMany({
+    where: { crm: '12345', crmUf: 'PE' },
+    data: { cnpj: '30111222000144', regimeTributario: 'LUCRO_PRESUMIDO' },
+  });
+
   await semearDemonstracao(unidade.id);
   await semearInstituicaoPendente();
   await semearDisponibilidade();
+  await semearCenarios(prisma, garantirCredencial);
 
   console.log(`\nSenha de todos: ${SENHA}`);
 }
