@@ -1,15 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { DecisaoResponse, RepasseComPlantao } from '@medescala/contracts';
 import { PrismaService } from '../../shared/prisma/prisma.service';
-import { EscalaService } from '../escala/escala.service';
+import { EscalaService, PLANTAO_COMPLETO } from '../escala/escala.service';
 import { FilaDeConvitesService } from './fila-de-convites.service';
 import { RepasseService } from './repasse.service';
-
-const PLANTAO_COMPLETO = {
-  escala: { include: { setor: { include: { unidade: { include: { instituicao: true } } } } } },
-  titular: { include: { usuario: { select: { nome: true } } } },
-  executante: { include: { usuario: { select: { nome: true } } } },
-} as const;
 
 /**
  * Listagens que as telas consomem.

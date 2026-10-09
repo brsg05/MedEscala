@@ -5,6 +5,7 @@ import {
   CandidatoResponse,
   ConcederChefiaRequest,
   ConfiguracaoInstituicaoRequest,
+  ContestarPlantaoRequest,
   ConviteResponse,
   COOKIE_CSRF_TOKEN,
   CriarDisponibilidadeRequest,
@@ -28,6 +29,8 @@ import {
   RecusarRepasseRequest,
   RepasseComPlantao,
   RepasseResponse,
+  ResolverContestacaoRequest,
+  ResponderContestacaoRequest,
 } from '@medescala/contracts';
 import { z } from 'zod';
 
@@ -261,6 +264,44 @@ export const api = {
 
   verificarMedico: (id: string): Promise<undefined> =>
     post(`/operador/medicos/${id}/verificar`, Nada),
+
+  // --- execução do plantão (F16) ----------------------------------------------
+
+  checkin: (plantaoId: string): Promise<PlantaoResponse> =>
+    post(`/plantoes/${plantaoId}/execucao/inicio`, PlantaoResponse),
+
+  checkout: (plantaoId: string): Promise<PlantaoResponse> =>
+    post(`/plantoes/${plantaoId}/execucao/fim`, PlantaoResponse),
+
+  confirmarExecucao: (plantaoId: string): Promise<PlantaoResponse> =>
+    post(`/plantoes/${plantaoId}/execucao/confirmar`, PlantaoResponse),
+
+  contestar: (plantaoId: string, dados: ContestarPlantaoRequest): Promise<PlantaoResponse> =>
+    post(
+      `/plantoes/${plantaoId}/contestacao`,
+      PlantaoResponse,
+      ContestarPlantaoRequest.parse(dados),
+    ),
+
+  responderContestacao: (
+    plantaoId: string,
+    dados: ResponderContestacaoRequest,
+  ): Promise<PlantaoResponse> =>
+    post(
+      `/plantoes/${plantaoId}/contestacao/resposta`,
+      PlantaoResponse,
+      ResponderContestacaoRequest.parse(dados),
+    ),
+
+  resolverContestacao: (
+    plantaoId: string,
+    dados: ResolverContestacaoRequest,
+  ): Promise<PlantaoResponse> =>
+    post(
+      `/plantoes/${plantaoId}/contestacao/resolucao`,
+      PlantaoResponse,
+      ResolverContestacaoRequest.parse(dados),
+    ),
 
   // --- avisos (F22) -----------------------------------------------------------
 

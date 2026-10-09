@@ -15,7 +15,9 @@ const TRANSICOES: Readonly<Record<StatusPlantao, readonly StatusPlantao[]>> = {
   ABERTO: ['EM_SELECAO', 'CANCELADO'],
   // Volta para ABERTO quando o convite expira sem resposta (F10).
   EM_SELECAO: ['CONFIRMADO', 'ABERTO', 'CANCELADO'],
-  CONFIRMADO: ['EM_REPASSE', 'EM_EXECUCAO', 'CANCELADO'],
+  // EXECUTADO e CONTESTADO direto de CONFIRMADO: plantão que terminou sem
+  // check-in, quando a instituição confirma ou contesta (DEC-131).
+  CONFIRMADO: ['EM_REPASSE', 'EM_EXECUCAO', 'EXECUTADO', 'CONTESTADO', 'CANCELADO'],
   // O repasse aprovado devolve o plantão a CONFIRMADO, agora com outro executante.
   EM_REPASSE: ['CONFIRMADO', 'CANCELADO'],
   EM_EXECUCAO: ['EXECUTADO', 'CONTESTADO'],

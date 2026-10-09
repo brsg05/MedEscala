@@ -25,6 +25,7 @@ import { VencimentoDeConvitesProcessor } from './vencimento-de-convites.processo
     FilaDeConvitesService,
     VencimentoDeConvitesProcessor,
   ],
-  exports: [RepasseService],
+  // A fila sai para a F16: o check-in varre repasses vencidos no início (DEC-104).
+  exports: [RepasseService, FilaDeConvitesService],
 })
 export class RepasseModule {}

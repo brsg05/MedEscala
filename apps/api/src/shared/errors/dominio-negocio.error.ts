@@ -270,3 +270,41 @@ export class MedicoNaoEncontradoPorCrmError extends ErroDominio {
     super('Nenhum médico verificado com este CRM');
   }
 }
+
+// --- execução do plantão (F16, DEC-130 a DEC-134) ------------------------------
+
+/** Check-in ou check-out fora do horário permitido (DEC-133). */
+export class ForaDaJanelaDeExecucaoError extends ErroDominio {
+  readonly codigo = 'FORA_DA_JANELA_DE_EXECUCAO';
+
+  constructor(motivo: string) {
+    super(motivo);
+  }
+}
+
+export class PrazoDeContestacaoEncerradoError extends ErroDominio {
+  readonly codigo = 'PRAZO_DE_CONTESTACAO_ENCERRADO';
+
+  constructor() {
+    super('O prazo para contestar este plantão já terminou');
+  }
+}
+
+/** O plantão tem repasse em curso: quem vai executá-lo ainda não está decidido. */
+export class RepasseEmAndamentoError extends ErroDominio {
+  readonly codigo = 'REPASSE_EM_ANDAMENTO';
+
+  constructor() {
+    super(
+      'Há um pedido de repasse em andamento para este plantão. Cancele-o ou aguarde a decisão da instituição.',
+    );
+  }
+}
+
+export class ContestacaoJaRespondidaError extends ErroDominio {
+  readonly codigo = 'CONTESTACAO_JA_RESPONDIDA';
+
+  constructor() {
+    super('Esta contestação já foi respondida');
+  }
+}

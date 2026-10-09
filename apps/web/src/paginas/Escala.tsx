@@ -4,6 +4,7 @@ import { api } from '@/api/cliente';
 import { useRecurso } from '@/hooks/useRecurso';
 import { Button } from '@/componentes/ui/button';
 import { EstadoVazio } from '@/componentes/EstadoVazio';
+import { ExecucaoDoPlantao } from '@/componentes/ExecucaoDoPlantao';
 import {
   LegendaDeCobertura,
   TrilhoDeCobertura,
@@ -28,6 +29,11 @@ function estadoDoBloco(status: PlantaoResponse['status']): EstadoDoBloco {
     default:
       return 'turno';
   }
+}
+
+/** Só se repassa um plantão confirmado que ainda não começou (§8 do guia). */
+function pedivel(p: PlantaoResponse): boolean {
+  return p.status === 'CONFIRMADO' && Date.parse(p.inicio) > Date.now();
 }
 
 /**
@@ -146,7 +152,8 @@ export function Escala(): React.JSX.Element {
             dia={dia}
             blocos={blocos}
             aoSelecionar={(bloco) => {
-              setPlantaoEmRepasse(doDia.find((p) => p.id === bloco.id) ?? null);
+              const p = doDia.find((x) => x.id === bloco.id);
+              if (p !== undefined && pedivel(p)) setPlantaoEmRepasse(p);
             }}
           />
         )}
@@ -186,7 +193,7 @@ export function Escala(): React.JSX.Element {
                 </p>
               </div>
 
-              {p.status === 'CONFIRMADO' && (
+              {pedivel(p) && (
                 <Button
                   variante="contorno"
                   tamanho="pequeno"
@@ -202,6 +209,8 @@ export function Escala(): React.JSX.Element {
                   Repasse em andamento — você segue responsável até a chefia aprovar.
                 </p>
               )}
+
+              <ExecucaoDoPlantao plantao={p} perspectiva="medico" aoMudar={agenda.recarregar} />
             </article>
           ))}
         </section>

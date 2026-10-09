@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
 /**
@@ -53,6 +53,25 @@ const OPERADOR = usuario([
 const HOJE_10H = new Date();
 HOJE_10H.setHours(10, 0, 0, 0);
 
+/**
+ * O relógio dos testes fica parado às 8h de hoje: antes do plantão das 10h, com
+ * o check-in ainda fechado (DEC-133) e o repasse ainda possível. Sem isto, o
+ * mesmo teste mostraria botões diferentes conforme a hora em que roda.
+ */
+function relogioAs(hora: number, minuto = 0): void {
+  const d = new Date(HOJE_10H);
+  d.setHours(hora, minuto, 0, 0);
+  vi.setSystemTime(d);
+}
+
+const SEM_EXECUCAO = {
+  checkinEm: null,
+  checkoutEm: null,
+  contestavelAte: null,
+  semConfirmacao: false,
+  contestacao: null,
+};
+
 const PLANTAO = {
   id: '33333333-3333-4333-8333-333333333333',
   inicio: HOJE_10H.toISOString(),
@@ -80,6 +99,7 @@ const PLANTAO = {
     crm: '12345',
     crmUf: 'PE',
   },
+  execucao: SEM_EXECUCAO,
 };
 
 const VAGA_ABERTA = {
@@ -98,6 +118,7 @@ function estrutura(status: 'ATIVA' | 'PENDENTE') {
       cnpj: '12345678000190',
       status,
       prazoConviteRepasseMinutos: 60,
+      prazoContestacaoHoras: 72,
     },
     unidades: [
       {
@@ -129,7 +150,14 @@ function responderPorRota(mapa: Record<string, () => Response>): void {
   );
 }
 
+beforeEach(() => {
+  // Só `Date`: os timers reais continuam, para o `waitFor` funcionar.
+  vi.useFakeTimers({ toFake: ['Date'] });
+  relogioAs(8);
+});
+
 afterEach(() => {
+  vi.useRealTimers();
   cleanup();
   vi.unstubAllGlobals();
   // URL e "último modo" sobrevivem entre testes no jsdom; sem isto, um teste
@@ -512,5 +540,95 @@ describe('avisos in-app (F22)', () => {
         .mocked(fetch)
         .mock.calls.some(([url]) => String(url).includes(`/notificacoes/${AVISO.id}/lida`)),
     ).toBe(true);
+  });
+});
+
+describe('execução do plantão (F16)', () => {
+  it('na janela, o médico faz check-in pelo cartão do plantão', async () => {
+    relogioAs(9, 40);
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [PLANTAO], alertaCargaHoraria: null }),
+      [`/plantoes/${PLANTAO.id}/execucao/inicio`]: () =>
+        json(201, {
+          ...PLANTAO,
+          status: 'EM_EXECUCAO',
+          execucao: { ...SEM_EXECUCAO, checkinEm: new Date().toISOString() },
+        }),
+    });
+    render(<App />);
+
+    // O plantão começa às 10h; às 9h40 o check-in já abriu (DEC-133).
+    fireEvent.click(await screen.findByRole('button', { name: 'Fazer check-in' }));
+
+    await waitFor(() => {
+      expect(
+        vi
+          .mocked(fetch)
+          .mock.calls.some(([url]) =>
+            String(url).includes(`/plantoes/${PLANTAO.id}/execucao/inicio`),
+          ),
+      ).toBe(true);
+    });
+  });
+
+  it('antes da janela, avisa a hora do check-in', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [PLANTAO], alertaCargaHoraria: null }),
+    });
+    render(<App />);
+
+    expect(await screen.findByText(/Check-in a partir das/u)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Pedir repasse' })).toBeDefined();
+  });
+
+  it('a chefia vê o plantão sem confirmação e decide (DEC-131)', async () => {
+    relogioAs(19);
+    responderPorRota({
+      '/auth/me': () => json(200, CHEFIA),
+      [`/instituicoes/${HOSPITAL}/estrutura`]: () => json(200, estrutura('ATIVA')),
+      [`/instituicoes/${HOSPITAL}/plantoes`]: () =>
+        json(200, [{ ...PLANTAO, execucao: { ...SEM_EXECUCAO, semConfirmacao: true } }]),
+    });
+    render(<App />);
+
+    expect(await screen.findByText(/Sem confirmação:/u)).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Confirmar cumprido' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Contestar' })).toBeDefined();
+  });
+
+  it('o médico contestado responde com a sua versão (DEC-134)', async () => {
+    relogioAs(19);
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () =>
+        json(200, {
+          plantoes: [
+            {
+              ...PLANTAO,
+              status: 'CONTESTADO',
+              execucao: {
+                ...SEM_EXECUCAO,
+                contestacao: {
+                  justificativa: 'Saída registrada na portaria às 15h',
+                  abertaEm: new Date().toISOString(),
+                  resposta: null,
+                  respondidaEm: null,
+                  resultado: null,
+                  nota: null,
+                  resolvidaEm: null,
+                },
+              },
+            },
+          ],
+          alertaCargaHoraria: null,
+        }),
+    });
+    render(<App />);
+
+    expect(await screen.findByText('Saída registrada na portaria às 15h')).toBeDefined();
+    expect(screen.getByLabelText('Sua versão')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Enviar resposta' })).toBeDefined();
   });
 });

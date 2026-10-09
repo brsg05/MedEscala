@@ -58,6 +58,12 @@ const STATUS_POR_CODIGO: Readonly<Record<string, number>> = {
   INDICACAO_INVALIDA: HttpStatus.UNPROCESSABLE_ENTITY,
   MEDICO_NAO_ENCONTRADO_POR_CRM: HttpStatus.NOT_FOUND,
   FORA_DO_ESCOPO_DA_INSTITUICAO: HttpStatus.FORBIDDEN,
+
+  // --- execução do plantão (F16) ---------------------------------------------
+  FORA_DA_JANELA_DE_EXECUCAO: HttpStatus.CONFLICT,
+  PRAZO_DE_CONTESTACAO_ENCERRADO: HttpStatus.CONFLICT,
+  REPASSE_EM_ANDAMENTO: HttpStatus.CONFLICT,
+  CONTESTACAO_JA_RESPONDIDA: HttpStatus.CONFLICT,
 };
 
 @Catch(ErroDominio)

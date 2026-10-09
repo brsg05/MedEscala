@@ -132,11 +132,19 @@ export function Estrutura({ usuario }: { usuario: UsuarioAutenticado }): React.J
             )}
           </section>
 
-          <section aria-label="Repasses" className="space-y-3">
-            <p className="sinal">Repasses</p>
-            <PrazoDoConvite
+          <section aria-label="Prazos" className="space-y-3">
+            <p className="sinal">Prazos</p>
+            <Prazo
               instituicaoId={instituicaoId}
+              campo="prazoConviteRepasseMinutos"
               atual={dado.instituicao.prazoConviteRepasseMinutos}
+              editavel={admin}
+              aoSalvar={estrutura.recarregar}
+            />
+            <Prazo
+              instituicaoId={instituicaoId}
+              campo="prazoContestacaoHoras"
+              atual={dado.instituicao.prazoContestacaoHoras}
               editavel={admin}
               aoSalvar={estrutura.recarregar}
             />
@@ -379,22 +387,52 @@ function ConcederChefia({
   );
 }
 
-/**
- * DEC-090 — quanto tempo cada convidado da fila tem para responder antes de a
- * vez passar ao próximo. Curto por desenho: a fila anda um por vez.
- */
-function PrazoDoConvite({
+type CampoDePrazo = 'prazoConviteRepasseMinutos' | 'prazoContestacaoHoras';
+
+/** O que cada prazo significa, em uma tabela só — os dois formulários são iguais. */
+const PRAZOS: Readonly<
+  Record<
+    CampoDePrazo,
+    { rotulo: string; unidade: string; min: number; max: number; ajuda: string; leitura: string }
+  >
+> = {
+  // DEC-090 — curto por desenho: a fila anda um por vez.
+  prazoConviteRepasseMinutos: {
+    rotulo: 'Prazo de cada convite de repasse (minutos)',
+    unidade: 'min',
+    min: 5,
+    max: 1440,
+    ajuda:
+      'Quanto tempo cada pessoa da fila tem para aceitar antes de a vez passar à próxima. Entre 5 minutos e 24 horas; o padrão é 60. Vale para os próximos convites, não para o que já está correndo.',
+    leitura: 'para cada convidado responder antes de a vez passar ao próximo',
+  },
+  // DEC-132 — cobre fim de semana com o padrão de 72h.
+  prazoContestacaoHoras: {
+    rotulo: 'Prazo para contestar um check-out (horas)',
+    unidade: 'h',
+    min: 1,
+    max: 336,
+    ajuda:
+      'Depois do check-out do médico, por quanto tempo a chefia ainda pode contestar o plantão. Entre 1 hora e 14 dias; o padrão é 72. Vale para os próximos check-outs.',
+    leitura: 'para a chefia contestar um check-out',
+  },
+};
+
+function Prazo({
   instituicaoId,
+  campo,
   atual,
   editavel,
   aoSalvar,
 }: {
   instituicaoId: string;
+  campo: CampoDePrazo;
   atual: number;
   editavel: boolean;
   aoSalvar: () => void;
 }): React.JSX.Element {
-  const [minutos, setMinutos] = useState(String(atual));
+  const meta = PRAZOS[campo];
+  const [valor, setValor] = useState(String(atual));
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
 
@@ -402,9 +440,7 @@ function PrazoDoConvite({
     evento.preventDefault();
     setErro(null);
 
-    const validado = ConfiguracaoInstituicaoRequest.safeParse({
-      prazoConviteRepasseMinutos: Number(minutos),
-    });
+    const validado = ConfiguracaoInstituicaoRequest.safeParse({ [campo]: Number(valor) });
     if (!validado.success) {
       setErro(validado.error.issues[0]?.message ?? 'Prazo inválido');
       return;
@@ -424,8 +460,10 @@ function PrazoDoConvite({
   if (!editavel) {
     return (
       <p className="rounded-lg border border-borda bg-tinta-2 px-4 py-3 text-sm text-gelo-2">
-        Cada convidado tem <span className="dado font-semibold text-gelo">{atual} min</span> para
-        responder antes de a vez passar ao próximo.
+        <span className="dado font-semibold text-gelo">
+          {atual} {meta.unidade}
+        </span>{' '}
+        {meta.leitura}.
       </p>
     );
   }
@@ -437,28 +475,24 @@ function PrazoDoConvite({
       noValidate
     >
       <div className="space-y-2">
-        <Label htmlFor="prazo-convite">Prazo de cada convite (minutos)</Label>
+        <Label htmlFor={campo}>{meta.rotulo}</Label>
         <Input
-          id="prazo-convite"
+          id={campo}
           type="number"
           inputMode="numeric"
-          min={5}
-          max={1440}
-          value={minutos}
-          onChange={(e) => setMinutos(e.target.value)}
+          min={meta.min}
+          max={meta.max}
+          value={valor}
+          onChange={(e) => setValor(e.target.value)}
         />
-        <p className="text-xs text-gelo-3">
-          Quanto tempo cada pessoa da fila tem para aceitar antes de a vez passar à próxima. Entre 5
-          minutos e 24 horas; o padrão é 60. Vale para os próximos convites, não para o que já está
-          correndo.
-        </p>
+        <p className="text-xs text-gelo-3">{meta.ajuda}</p>
       </div>
       <ErroDeFormulario mensagem={erro} />
       <Button
         type="submit"
         variante="contorno"
         className="w-full"
-        disabled={enviando || Number(minutos) === atual}
+        disabled={enviando || Number(valor) === atual}
       >
         {enviando ? 'Salvando…' : 'Salvar prazo'}
       </Button>

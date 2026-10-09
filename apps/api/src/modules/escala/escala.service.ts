@@ -22,14 +22,23 @@ import {
   horasContiguasComOTurno,
 } from './domain/agenda.rules';
 
-/** `include` reutilizado para montar `PlantaoResponse` sem repetir a árvore. */
-const PLANTAO_COMPLETO = {
+/**
+ * `include` para montar `PlantaoResponse` sem repetir a árvore. Exportado: quem
+ * monta um plantão para resposta usa este, e não uma cópia que esquece um ramo.
+ */
+export const PLANTAO_COMPLETO = {
   escala: { include: { setor: { include: { unidade: { include: { instituicao: true } } } } } },
   titular: { include: { usuario: { select: { nome: true } } } },
   executante: { include: { usuario: { select: { nome: true } } } },
+  contestacao: true,
 } as const;
 
-type PlantaoCompleto = Prisma.PlantaoGetPayload<{ include: typeof PLANTAO_COMPLETO }>;
+/** DEC-131 — terminou e ninguém confirmou. Derivado do horário, não gravado. */
+export function semConfirmacao(p: { status: string; fim: Date }, agora: Date): boolean {
+  return (p.status === 'CONFIRMADO' || p.status === 'EM_EXECUCAO') && p.fim <= agora;
+}
+
+export type PlantaoCompleto = Prisma.PlantaoGetPayload<{ include: typeof PLANTAO_COMPLETO }>;
 
 /**
  * F03, F05, F06 e F12 — unidades, setores, escala oficial e vagas.
@@ -261,6 +270,24 @@ export class EscalaService {
               crm: p.executante.crm,
               crmUf: p.executante.crmUf,
             },
+      execucao: {
+        checkinEm: p.checkinEm?.toISOString() ?? null,
+        checkoutEm: p.checkoutEm?.toISOString() ?? null,
+        contestavelAte: p.contestavelAte?.toISOString() ?? null,
+        semConfirmacao: semConfirmacao(p, new Date()),
+        contestacao:
+          p.contestacao === null
+            ? null
+            : {
+                justificativa: p.contestacao.justificativa,
+                abertaEm: p.contestacao.abertaEm.toISOString(),
+                resposta: p.contestacao.resposta,
+                respondidaEm: p.contestacao.respondidaEm?.toISOString() ?? null,
+                resultado: p.contestacao.resultado,
+                nota: p.contestacao.nota,
+                resolvidaEm: p.contestacao.resolvidaEm?.toISOString() ?? null,
+              },
+      },
     };
   }
 }

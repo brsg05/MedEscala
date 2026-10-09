@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Centavos } from './dinheiro.js';
 import { InstanteUtc } from './datahora.js';
+import { ExecucaoResponse } from './execucao.js';
 
 /**
  * Contratos do domínio — Sprints 1 a 3.
@@ -239,6 +240,8 @@ export const PlantaoResponse = z.strictObject({
   }),
   titular: MedicoResumo.nullable(),
   executante: MedicoResumo.nullable(),
+  /** F16 — check-in, check-out e contestação. */
+  execucao: ExecucaoResponse,
 });
 export type PlantaoResponse = z.infer<typeof PlantaoResponse>;
 
@@ -442,7 +445,10 @@ export const SetorResumo = z.strictObject({
 export type SetorResumo = z.infer<typeof SetorResumo>;
 
 export const EstruturaResponse = z.strictObject({
-  instituicao: InstituicaoResumo.extend({ prazoConviteRepasseMinutos: z.number().int() }),
+  instituicao: InstituicaoResumo.extend({
+    prazoConviteRepasseMinutos: z.number().int(),
+    prazoContestacaoHoras: z.number().int(),
+  }),
   unidades: z.array(
     z.strictObject({
       id: z.uuid(),
@@ -513,12 +519,27 @@ export type ConviteResponse = z.infer<typeof ConviteResponse>;
 export const BuscaPorCrmQuery = z.strictObject({ crm: Crm, uf: UfBrasileira });
 export type BuscaPorCrmQuery = z.infer<typeof BuscaPorCrmQuery>;
 
-/** DEC-090 — o admin ajusta o prazo de cada convite da fila. */
-export const ConfiguracaoInstituicaoRequest = z.strictObject({
-  prazoConviteRepasseMinutos: z
-    .number()
-    .int()
-    .min(5, 'O prazo mínimo é de 5 minutos')
-    .max(1440, 'O prazo máximo é de 24 horas'),
-});
+/**
+ * Prazos que o admin ajusta: o de cada convite da fila (DEC-090) e o de
+ * contestação de um check-out (DEC-132). Manda só o que mudou.
+ */
+export const ConfiguracaoInstituicaoRequest = z
+  .strictObject({
+    prazoConviteRepasseMinutos: z
+      .number()
+      .int()
+      .min(5, 'O prazo mínimo é de 5 minutos')
+      .max(1440, 'O prazo máximo é de 24 horas')
+      .optional(),
+    prazoContestacaoHoras: z
+      .number()
+      .int()
+      .min(1, 'O prazo mínimo é de 1 hora')
+      .max(336, 'O prazo máximo é de 14 dias')
+      .optional(),
+  })
+  .refine(
+    (c) => c.prazoConviteRepasseMinutos !== undefined || c.prazoContestacaoHoras !== undefined,
+    'Informe ao menos um prazo',
+  );
 export type ConfiguracaoInstituicaoRequest = z.infer<typeof ConfiguracaoInstituicaoRequest>;

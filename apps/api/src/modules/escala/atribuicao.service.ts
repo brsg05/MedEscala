@@ -12,7 +12,7 @@ import {
   RequisitosNaoAtendidosError,
   TransicaoInvalidaError,
 } from '../../shared/errors/dominio-negocio.error';
-import { EscalaService } from './escala.service';
+import { EscalaService, PLANTAO_COMPLETO } from './escala.service';
 import { podeTransicionar } from './domain/plantao.state';
 
 /**
@@ -84,13 +84,7 @@ export class AtribuicaoService {
           medicoExecutanteId: medicoId,
           status: 'CONFIRMADO',
         },
-        include: {
-          escala: {
-            include: { setor: { include: { unidade: { include: { instituicao: true } } } } },
-          },
-          titular: { include: { usuario: { select: { nome: true } } } },
-          executante: { include: { usuario: { select: { nome: true } } } },
-        },
+        include: PLANTAO_COMPLETO,
       });
 
       // F12 — a escala oficial mudou.

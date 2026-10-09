@@ -109,7 +109,7 @@ export class EscalaController {
     return this.perfilAcesso.concederChefia(instituicaoId, corpo.email, usuario.id);
   }
 
-  /** DEC-090 — prazo de cada convite da fila de substitutos. */
+  /** DEC-090 e DEC-132 — prazos do convite da fila e da contestação. */
   @Perfis('ADMIN_INSTITUICAO')
   @Patch('instituicoes/:id/configuracao')
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -120,7 +120,18 @@ export class EscalaController {
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<void> {
     this.instituicao.exigirPapel(usuario, instituicaoId, 'ADMIN_INSTITUICAO');
-    await this.instituicao.configurar(instituicaoId, corpo.prazoConviteRepasseMinutos, usuario.id);
+    await this.instituicao.configurar(
+      instituicaoId,
+      {
+        ...(corpo.prazoConviteRepasseMinutos === undefined
+          ? {}
+          : { prazoConviteRepasseMinutos: corpo.prazoConviteRepasseMinutos }),
+        ...(corpo.prazoContestacaoHoras === undefined
+          ? {}
+          : { prazoContestacaoHoras: corpo.prazoContestacaoHoras }),
+      },
+      usuario.id,
+    );
   }
 
   // --- escala da instituição (F06, F12) ----------------------------------------

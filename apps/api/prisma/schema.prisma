@@ -22,8 +22,8 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   // Migrations precisam da conexão direta: o pooler do Supabase (6543) não
   // suporta os prepared statements do Prisma.
   directUrl = env("DIRECT_URL")
@@ -84,6 +84,8 @@ model Instituicao {
   validadeConviteHoras           Int @default(12) @map("validade_convite_horas")
   /// DEC-090 — quanto tempo cada pessoa da fila de substitutos tem para responder.
   prazoConviteRepasseMinutos     Int @default(60) @map("prazo_convite_repasse_minutos")
+  /// DEC-132 — até quando a instituição contesta um check-out. Padrão 72h.
+  prazoContestacaoHoras          Int @default(72) @map("prazo_contestacao_horas")
 
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
@@ -256,12 +258,12 @@ model Medico {
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  usuario             Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuario             Usuario                 @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   disponibilidades    JanelaDisponibilidade[]
-  plantoesTitular     Plantao[]              @relation("PlantaoTitular")
-  plantoesExecutante  Plantao[]              @relation("PlantaoExecutante")
-  repassesSolicitados Repasse[]              @relation("RepasseTitular")
-  repassesRecebidos   Repasse[]              @relation("RepasseSubstituto")
+  plantoesTitular     Plantao[]               @relation("PlantaoTitular")
+  plantoesExecutante  Plantao[]               @relation("PlantaoExecutante")
+  repassesSolicitados Repasse[]               @relation("RepasseTitular")
+  repassesRecebidos   Repasse[]               @relation("RepasseSubstituto")
   convites            ConviteRepasse[]
 
   @@unique([crm, crmUf])
@@ -327,8 +329,8 @@ model Setor {
 /// alteracao e o historico completo e a propria `evento_auditoria`, que ja e
 /// append-only garantida por trigger (ADR-007). Um mecanismo so.
 model Escala {
-  id      String @id @default(uuid()) @db.Uuid
-  setorId String @map("setor_id") @db.Uuid
+  id          String @id @default(uuid()) @db.Uuid
+  setorId     String @map("setor_id") @db.Uuid
   /// Competencia no formato AAAA-MM.
   competencia String @db.VarChar(7)
   versao      Int    @default(1)
@@ -367,8 +369,20 @@ model Plantao {
 
   status StatusPlantao @default(ABERTO)
 
+  // F16 — execução (DEC-130 a DEC-134). Check-in e check-out são do executante;
+  // `contestavelAte` é até quando a instituição pode contestar um check-out.
+  checkinEm      DateTime? @map("checkin_em") @db.Timestamptz(6)
+  checkoutEm     DateTime? @map("checkout_em") @db.Timestamptz(6)
+  contestavelAte DateTime? @map("contestavel_ate") @db.Timestamptz(6)
+
+  /// Marcas dos avisos agendados (F22): cada lembrete sai uma vez só.
+  lembreteCheckinEm      DateTime? @map("lembrete_checkin_em") @db.Timestamptz(6)
+  alertaSemConfirmacaoEm DateTime? @map("alerta_sem_confirmacao_em") @db.Timestamptz(6)
+
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  contestacao Contestacao?
 
   escala     Escala    @relation(fields: [escalaId], references: [id], onDelete: Cascade)
   titular    Medico?   @relation("PlantaoTitular", fields: [medicoTitularId], references: [id])
@@ -409,9 +423,9 @@ model Repasse {
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  plantao    Plantao @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
-  titular    Medico  @relation("RepasseTitular", fields: [medicoTitularId], references: [id])
-  substituto Medico? @relation("RepasseSubstituto", fields: [medicoSubstitutoId], references: [id])
+  plantao    Plantao          @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
+  titular    Medico           @relation("RepasseTitular", fields: [medicoTitularId], references: [id])
+  substituto Medico?          @relation("RepasseSubstituto", fields: [medicoSubstitutoId], references: [id])
   convites   ConviteRepasse[]
 
   @@index([plantaoId])
@@ -489,8 +503,15 @@ enum TipoNotificacao {
   REPASSE_APROVADO
   REPASSE_RECUSADO
   REPASSE_CANCELADO
-  // escala
+  // escala e execução (F16)
   MEDICO_ESCALADO
+  CHECKIN_LIBERADO
+  CHECKOUT_REGISTRADO
+  PLANTAO_SEM_CONFIRMACAO
+  PLANTAO_CONFIRMADO
+  PLANTAO_CONTESTADO
+  CONTESTACAO_RESPONDIDA
+  CONTESTACAO_RESOLVIDA
   // verificação de cadastro
   CRM_VERIFICADO
   INSTITUICAO_APROVADA
@@ -519,4 +540,35 @@ model Notificacao {
   @@index([usuarioId, criadaEm(sort: Desc)])
   @@index([usuarioId, lidaEm])
   @@map("notificacao")
+}
+
+// --- F16 — contestação da execução (DEC-134, ADR-020) -------------------------
+
+/// ADR-020: contestação improcedente segue como EXECUTADO; procedente cancela.
+enum ResultadoContestacao {
+  IMPROCEDENTE
+  PROCEDENTE
+}
+
+/// A instituição contesta com justificativa, o executante pode responder, e a
+/// própria instituição fecha (DEC-134). Uma por plantão: resolvida, é final.
+model Contestacao {
+  id        String @id @default(uuid()) @db.Uuid
+  plantaoId String @unique @map("plantao_id") @db.Uuid
+
+  justificativa String
+  abertaPorId   String   @map("aberta_por_id") @db.Uuid
+  abertaEm      DateTime @default(now()) @map("aberta_em") @db.Timestamptz(6)
+
+  resposta     String?
+  respondidaEm DateTime? @map("respondida_em") @db.Timestamptz(6)
+
+  resultado      ResultadoContestacao?
+  nota           String?
+  resolvidaPorId String?               @map("resolvida_por_id") @db.Uuid
+  resolvidaEm    DateTime?             @map("resolvida_em") @db.Timestamptz(6)
+
+  plantao Plantao @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
+
+  @@map("contestacao")
 }

@@ -238,3 +238,24 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | DEC-145 | Verificação de CRM, aprovação de instituição e cadastro de médico passaram a rodar **em transação** | Claude | Exigência da DEC-128: o aviso precisa da mesma transação da ação | — |
 | DEC-146 | Glifo próprio para os avisos (bloco do trilho com sinal aceso), no topo, ao lado da conta, em todos os modos | Claude | Segue a regra dos glifos do app; convite com prazo curto não pode depender da aba aberta | — |
 | DEC-147 | Os e2e apagam os avisos dos plantões e cadastros que criam | Claude | Senão a demonstração mostraria avisos de coisas que já não existem | — |
+
+## 2026-10-09 — F16: confirmação de execução
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-148 | O check-out leva o plantão **direto a EXECUTADO**, contestável até `contestavelAte`; não há estado intermediário "aguardando contestação" | Claude | A ADR-020 já tinha `EXECUTADO → CONTESTADO`; um estado a mais exigiria job para fechar a janela. Na prática: cumprido enquanto ninguém contesta | DEC-130, ADR-020 |
+| DEC-149 | Duas transições novas: **CONFIRMADO → EXECUTADO** e **CONFIRMADO → CONTESTADO**, só depois do fim do plantão | Claude | É o caso "sem check-in" da DEC-131 | ADR-020 |
+| DEC-150 | "Sem confirmação" é **derivado do horário**, não gravado | Claude | Não depende de job para existir; o Redis só manda o lembrete | DEC-097 |
+| DEC-151 | Plantão confirmado pela própria instituição **não abre janela** de contestação | Claude | Quem contestaria é quem acabou de confirmar | — |
+| DEC-152 | Plantão sem confirmação pode ser contestado **a qualquer momento**, sem prazo | Claude | Ninguém afirmou nada que precise ser contestado a tempo | DEC-131 |
+| DEC-153 | Check-out continua possível **depois do fim** | Claude | Quem esqueceu de marcar ainda marca | DEC-133 |
+| DEC-154 | Check-in com repasse em andamento: **recusado antes do início**; depois do início, o repasse ainda SOLICITADO é encerrado e o check-in segue | Claude | Antes do início, quem executa ainda não está decidido; depois, vale a DEC-104 | DEC-104 |
+| DEC-155 | Só **CHEFIA_ESCALA** confirma, contesta e resolve; o admin só vê | Claude | Mesma regra da aprovação de repasse (F11) | — |
+| DEC-156 | O médico responde **uma vez**; a decisão da instituição **exige motivo** e é **final** (a janela não reabre) | Claude | Detalhe da DEC-134; evita contestação em laço | DEC-134 |
+| DEC-157 | Prazo de contestação configurável entre **1 hora e 14 dias** | Claude | Detalhe da DEC-132 | DEC-132 |
+| DEC-158 | Lembretes de check-in e de "sem confirmação" por **job recorrente** do BullMQ (a cada 60s, agendador de id fixo); cada lembrete marca a linha do plantão e sai uma vez só | Claude | Sem Redis, perde-se o lembrete, nunca um estado (DEC-150) | ADR-027 |
+| DEC-159 | Módulo próprio **`execucao`**, fora da escala | Claude | Depende do repasse (DEC-154), que já depende da escala: dentro da escala fecharia um ciclo | — |
+| DEC-160 | "Pedir repasse" só aparece para plantão **confirmado que ainda não começou** | Claude | Antes aparecia também em plantão passado | — |
+| DEC-161 | Médico que não é o executante recebe **404** nas ações de execução | Claude | ADR-026 | ADR-026 |
+| DEC-162 | Seed: a Ana ganha um plantão **cumprido anteontem** (ainda contestável) e um **sem confirmação ontem** | Claude | A F16 precisa ter o que mostrar na demonstração | — |
+| DEC-163 | Testes do web com **relógio fixo** (só `Date`) | Claude | Os botões dependem da hora; sem isto o mesmo teste mudaria conforme a hora em que roda | — |

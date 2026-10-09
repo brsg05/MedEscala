@@ -10,6 +10,7 @@ import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CredenciamentoModule } from './modules/credenciamento/credenciamento.module';
 import { EscalaModule } from './modules/escala/escala.module';
+import { ExecucaoModule } from './modules/execucao/execucao.module';
 import { NotificacaoModule } from './modules/notificacao/notificacao.module';
 import { OperadorModule } from './modules/operador/operador.module';
 import { RepasseModule } from './modules/repasse/repasse.module';
@@ -42,6 +43,7 @@ import { PerfisGuard } from './modules/auth/guards/perfis.guard';
     CredenciamentoModule,
     EscalaModule,
     RepasseModule,
+    ExecucaoModule,
     OperadorModule,
   ],
   controllers: [SaudeController],

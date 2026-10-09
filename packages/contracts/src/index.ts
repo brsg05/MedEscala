@@ -12,5 +12,6 @@ export * from './perfis.js';
 export * from './dinheiro.js';
 export * from './datahora.js';
 export * from './auth.js';
+export * from './execucao.js';
 export * from './dominio.js';
 export * from './notificacoes.js';

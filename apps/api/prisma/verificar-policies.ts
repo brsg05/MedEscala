@@ -65,13 +65,25 @@ const CHECAGENS: readonly Checagem[] = [
     sql: `SELECT 1 FROM pg_constraint WHERE conname = 'notificacao_lida_depois_de_criada'`,
   },
   {
+    nome: 'EM_EXECUCAO sempre tem check-in (F16)',
+    sql: `SELECT 1 FROM pg_constraint WHERE conname = 'plantao_em_execucao_tem_checkin'`,
+  },
+  {
+    nome: 'check-out só depois do check-in (F16)',
+    sql: `SELECT 1 FROM pg_constraint WHERE conname = 'plantao_checkout_depois_do_checkin'`,
+  },
+  {
+    nome: 'contestação resolvida por inteiro (F16)',
+    sql: `SELECT 1 FROM pg_constraint WHERE conname = 'contestacao_resolucao_completa'`,
+  },
+  {
     nome: 'RLS ligada em todas as tabelas de domínio',
     sql: `SELECT 1 FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
           WHERE n.nspname = 'public'
             AND c.relname IN ('usuario','instituicao','perfil_acesso','refresh_token','evento_auditoria',
                               'medico','janela_disponibilidade','unidade','setor','escala','plantao','repasse',
-                              'convite_repasse','notificacao')
+                              'convite_repasse','notificacao','contestacao')
             AND c.relrowsecurity = false`,
   },
 ];

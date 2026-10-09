@@ -102,7 +102,7 @@ function AreaLogada({
             path="/instituicao/:instituicaoId/escala"
             element={
               <DaInstituicao modos={modos} inicio={inicio}>
-                <EscalaInstituicao />
+                <EscalaInstituicao usuario={usuario} />
               </DaInstituicao>
             }
           />

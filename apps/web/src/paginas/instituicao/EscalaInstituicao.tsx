@@ -6,10 +6,12 @@ import {
   formatarHora,
   ROTULO_STATUS_PLANTAO,
   type PlantaoResponse,
+  type UsuarioAutenticado,
 } from '@medescala/contracts';
 import { api } from '@/api/cliente';
 import { useRecurso } from '@/hooks/useRecurso';
 import { ErroDeFormulario } from '@/componentes/Painel';
+import { ExecucaoDoPlantao } from '@/componentes/ExecucaoDoPlantao';
 import { Button } from '@/componentes/ui/button';
 import { Etiqueta } from '@/componentes/ui/etiqueta';
 import {
@@ -60,8 +62,12 @@ type Acao =
  * vermelho é a crise do dia, um turno sem ninguém. Daqui a chefia publica a vaga,
  * escala quem se ofereceu (DEC-062) e abre a trilha de qualquer plantão (F23).
  */
-export function EscalaInstituicao(): React.JSX.Element {
+export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }): React.JSX.Element {
   const { instituicaoId = '' } = useParams();
+  // Confirmar e contestar a execução é da chefia (DEC-130); o admin só vê.
+  const chefia = usuario.perfis.some(
+    (p) => p.perfil === 'CHEFIA_ESCALA' && p.instituicaoId === instituicaoId,
+  );
   const [dia, setDia] = useState(() => new Date());
   const [acao, setAcao] = useState<Acao | null>(null);
 
@@ -253,6 +259,14 @@ export function EscalaInstituicao(): React.JSX.Element {
                   Trilha
                 </Button>
               </div>
+
+              {chefia && (
+                <ExecucaoDoPlantao
+                  plantao={p}
+                  perspectiva="instituicao"
+                  aoMudar={plantoes.recarregar}
+                />
+              )}
             </article>
           ))}
         </section>

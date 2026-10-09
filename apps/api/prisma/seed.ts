@@ -296,7 +296,8 @@ async function semearDemonstracao(unidadeId: string): Promise<void> {
   async function plantao(
     inicio: Date,
     horas: number,
-    status: 'CONFIRMADO' | 'EM_REPASSE',
+    status: 'CONFIRMADO' | 'EM_REPASSE' | 'EXECUTADO',
+    execucao: { checkinEm?: Date; checkoutEm?: Date; contestavelAte?: Date } = {},
   ): Promise<{ id: string }> {
     return prisma.plantao.create({
       data: {
@@ -310,12 +311,25 @@ async function semearDemonstracao(unidadeId: string): Promise<void> {
         medicoTitularId: ana.id,
         medicoExecutanteId: ana.id,
         status,
+        ...execucao,
       },
       select: { id: true },
     });
   }
 
-  // Hoje, diurno — aparece na régua ao abrir o app.
+  // Anteontem — cumprido, com check-in e check-out, ainda contestável pela
+  // chefia (F16, DEC-132).
+  const checkout = em(-2, 19);
+  await plantao(em(-2, 7), 12, 'EXECUTADO', {
+    checkinEm: em(-2, 7),
+    checkoutEm: checkout,
+    contestavelAte: new Date(checkout.getTime() + 72 * 3_600_000),
+  });
+
+  // Ontem — terminou sem check-in: "sem confirmação" para a chefia (DEC-131).
+  await plantao(em(-1, 7), 12, 'CONFIRMADO');
+
+  // Hoje, diurno — aparece na régua ao abrir o app; check-in liberado (F16).
   await plantao(em(0, 7), 12, 'CONFIRMADO');
 
   // Daqui a 3 dias, noturno — confirmado e com folga para pedir repasse.
@@ -348,7 +362,7 @@ async function semearDemonstracao(unidadeId: string): Promise<void> {
   });
 
   console.log(
-    `demo         3 plantões da Ana em ${setor.nome} (hoje, +3 dias, +5 dias em repasse)`,
+    `demo         5 plantões da Ana em ${setor.nome} (anteontem cumprido, ontem sem confirmação, hoje, +3 dias, +5 dias em repasse)`,
   );
 }
 

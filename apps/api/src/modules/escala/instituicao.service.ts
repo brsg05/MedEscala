@@ -16,7 +16,7 @@ import {
 } from '../../shared/errors/dominio-negocio.error';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { NotificacaoService } from '../notificacao/notificacao.service';
-import { EscalaService } from './escala.service';
+import { EscalaService, PLANTAO_COMPLETO } from './escala.service';
 
 /** Instituições em que o usuário tem algum dos perfis pedidos (ADR-006). */
 export function instituicoesComPerfil(
@@ -49,33 +49,54 @@ export class InstituicaoService {
     private readonly notificacoes: NotificacaoService,
   ) {}
 
-  /** DEC-090 — o admin ajusta o prazo de cada convite da fila de substitutos. */
+  /**
+   * Prazos que o admin ajusta: cada convite da fila de substitutos (DEC-090) e a
+   * contestação de um check-out (DEC-132). Cada mudança é um evento na trilha.
+   */
   async configurar(
     instituicaoId: string,
-    prazoConviteRepasseMinutos: number,
+    prazos: { prazoConviteRepasseMinutos?: number; prazoContestacaoHoras?: number },
     atorId: string,
   ): Promise<void> {
     const anterior = await this.prisma.instituicao.findUnique({
       where: { id: instituicaoId },
-      select: { prazoConviteRepasseMinutos: true },
+      select: { prazoConviteRepasseMinutos: true, prazoContestacaoHoras: true },
     });
 
     if (anterior === null) {
       throw new InstituicaoNaoEncontradaError();
     }
 
-    await this.prisma.instituicao.update({
-      where: { id: instituicaoId },
-      data: { prazoConviteRepasseMinutos },
-    });
+    await this.prisma.$transaction(async (tx) => {
+      await tx.instituicao.update({ where: { id: instituicaoId }, data: prazos });
 
-    await this.auditoria.registrar({
-      acao: 'PRAZO_DE_CONVITE_ALTERADO',
-      entidade: 'Instituicao',
-      entidadeId: instituicaoId,
-      atorId,
-      estadoAnterior: String(anterior.prazoConviteRepasseMinutos),
-      estadoNovo: String(prazoConviteRepasseMinutos),
+      if (prazos.prazoConviteRepasseMinutos !== undefined) {
+        await this.auditoria.registrar(
+          {
+            acao: 'PRAZO_DE_CONVITE_ALTERADO',
+            entidade: 'Instituicao',
+            entidadeId: instituicaoId,
+            atorId,
+            estadoAnterior: String(anterior.prazoConviteRepasseMinutos),
+            estadoNovo: String(prazos.prazoConviteRepasseMinutos),
+          },
+          tx,
+        );
+      }
+
+      if (prazos.prazoContestacaoHoras !== undefined) {
+        await this.auditoria.registrar(
+          {
+            acao: 'PRAZO_DE_CONTESTACAO_ALTERADO',
+            entidade: 'Instituicao',
+            entidadeId: instituicaoId,
+            atorId,
+            estadoAnterior: String(anterior.prazoContestacaoHoras),
+            estadoNovo: String(prazos.prazoContestacaoHoras),
+          },
+          tx,
+        );
+      }
     });
   }
 
@@ -187,6 +208,7 @@ export class InstituicaoService {
         cnpj: inst.cnpj,
         status: inst.status,
         prazoConviteRepasseMinutos: inst.prazoConviteRepasseMinutos,
+        prazoContestacaoHoras: inst.prazoContestacaoHoras,
       },
       unidades: inst.unidades.map((u) => ({
         id: u.id,
@@ -229,13 +251,7 @@ export class InstituicaoService {
         inicio: { lt: ate },
         fim: { gt: desde },
       },
-      include: {
-        escala: {
-          include: { setor: { include: { unidade: { include: { instituicao: true } } } } },
-        },
-        titular: { include: { usuario: { select: { nome: true } } } },
-        executante: { include: { usuario: { select: { nome: true } } } },
-      },
+      include: PLANTAO_COMPLETO,
       orderBy: { inicio: 'asc' },
     });
 

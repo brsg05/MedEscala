@@ -219,6 +219,10 @@ transições. Ela agora existe em `modules/escala/domain/plantao.state.ts`.
 conflita com a RN04 — um plantão travado nunca liquida nem cancela, e a regra exige documento
 fiscal para todo valor liquidado. `CONTESTADO → EXECUTADO` (contestação improcedente) ou
 `CONTESTADO → CANCELADO` (procedente), decidido pela instituição, que é quem tem o contrato.
+**Revisão (F16, DEC-149):** `CONFIRMADO → EXECUTADO` e `CONFIRMADO → CONTESTADO`, só depois do
+fim do plantão — o caso do plantão que termina sem check-in (DEC-131), em que a instituição
+confirma ou contesta. O check-out leva `EM_EXECUCAO → EXECUTADO`, contestável até
+`contestavelAte` (DEC-148).
 
 ### ADR-021 — Escala versionada por contador, com a trilha como histórico
 `Escala.versao` incrementa a cada alteração; o histórico completo que a F12 pede é a própria
@@ -545,10 +549,14 @@ POST   /repasses/:id/aceitar             (só o convidado da vez — DEC-105)
 POST   /repasses/:id/recusar-convite     (convidado da vez; passa a vez)
 POST   /repasses/:id/aprovar             (chefia — bloqueante)   F11
 POST   /repasses/:id/recusar             (chefia, com justificativa; a fila retoma — DEC-099)
-PATCH  /instituicoes/:id/configuracao    (admin: prazo de cada convite — DEC-090)
+PATCH  /instituicoes/:id/configuracao    (admin: prazos do convite e da contestação — DEC-090, DEC-132)
 
-POST   /plantoes/:id/execucao/inicio     F16
-POST   /plantoes/:id/execucao/fim
+POST   /plantoes/:id/execucao/inicio     F16  (check-in, 30 min antes — DEC-133)
+POST   /plantoes/:id/execucao/fim             (check-out; abre o prazo de contestação)
+POST   /plantoes/:id/execucao/confirmar       (chefia: sem confirmação → cumprido — DEC-131)
+POST   /plantoes/:id/contestacao              (chefia, com justificativa)
+POST   /plantoes/:id/contestacao/resposta     (executante, uma vez)
+POST   /plantoes/:id/contestacao/resolucao    (chefia: IMPROCEDENTE ou PROCEDENTE — ADR-020)
 POST   /plantoes/:id/avaliacoes          F18
 
 GET    /plantoes/:id/contrato            F13  (PDF)
