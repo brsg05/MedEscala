@@ -23,8 +23,7 @@ interface Props {
   semIndicacao?: string;
 }
 
-const SEM_INDICACAO_NO_REPASSE =
-  'Ninguém indicado. Sem indicação, o convite é aberto: o sistema chama, 5 por vez, quem se ofereceu para este horário.';
+const SEM_INDICACAO_NO_REPASSE = 'Ninguém indicado ainda.';
 
 /**
  * Monta a fila de convites da Forma 1 (DEC-087, DEC-089).
@@ -116,19 +115,13 @@ export function MontadorDeFila({
             ))}
           </ol>
         )}
-        <p className="mt-2 text-xs text-gelo-3">
-          Um por vez, nesta ordem. Cada pessoa tem um prazo curto para responder; se recusar ou não
-          responder, a vez passa à próxima.
-        </p>
       </section>
 
       <section aria-label="Quem se ofereceu">
         <p className="sinal mb-2">Quem se ofereceu para este horário</p>
         {oferecidos.carregando && <div className="h-12 animate-pulse rounded-lg bg-tinta-3" />}
         {!oferecidos.carregando && disponiveis.length === 0 && (
-          <p className="text-xs text-gelo-3">
-            Ninguém declarou disponibilidade cobrindo este plantão.
-          </p>
+          <p className="text-xs text-gelo-3">Ninguém disponível neste horário.</p>
         )}
         <ul className="space-y-1.5">
           {disponiveis.map((c) => (
@@ -256,9 +249,6 @@ function ApontarPorCrm({
           {buscando ? '…' : 'Buscar'}
         </Button>
       </div>
-      <p className="mt-2 text-xs text-gelo-3">
-        Não precisa ter declarado disponibilidade — o convite é a pergunta.
-      </p>
       {erro !== null && <p className="mt-2 text-xs text-vazio">{erro}</p>}
     </section>
   );

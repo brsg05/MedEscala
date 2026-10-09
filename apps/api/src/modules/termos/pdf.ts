@@ -113,7 +113,7 @@ export function renderizarTermo(dados: {
     .fillColor(cinza)
     .text(`SHA-256 do conteúdo: ${dados.hash}`)
     .text(
-      'Assinatura simulada (DEC-185): cada parte aceitou por uma ação registrada no MedEscala. ' +
+      'Assinatura simulada: cada parte aceitou por uma ação registrada no MedEscala. ' +
         'O hash acima identifica o conteúdo aceito; qualquer alteração no texto produziria outro.',
     );
 

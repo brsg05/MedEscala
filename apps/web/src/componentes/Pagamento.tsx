@@ -77,10 +77,6 @@ function PagamentoDoPlantao({
           <CartaoDaPerna key={p.id} perna={p} aoMudar={financeiro.recarregar} />
         ))}
       </ul>
-      <p className="mt-4 text-xs leading-relaxed text-gelo-3">
-        Simulação: o meio de pagamento e o emissor de NFS-e são simulados. Nenhum valor é cobrado e
-        nenhuma nota é enviada à prefeitura.
-      </p>
     </Painel>
   );
 }

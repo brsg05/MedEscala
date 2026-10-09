@@ -108,9 +108,6 @@ export function Estrutura({ usuario }: { usuario: UsuarioAutenticado }): React.J
 
           <section aria-label="Chefias de escala" className="space-y-3">
             <p className="sinal">Chefias de escala</p>
-            <p className="text-sm leading-relaxed text-gelo-2">
-              Quem aprova ou recusa as substituições desta instituição (F11).
-            </p>
 
             <ul className="space-y-1.5">
               {dado.chefias.map((c) => (
@@ -314,10 +311,6 @@ function NovoSetor({
           />
         </div>
       </div>
-      <p className="text-xs text-gelo-3">
-        A especialidade precisa ser escrita exatamente como no cadastro do médico — hoje a
-        comparação é por texto.
-      </p>
       <ErroDeFormulario mensagem={erro} />
       <div className="flex gap-2">
         <Button
@@ -404,7 +397,7 @@ type CampoDePrazo = 'prazoConviteMinutos' | 'prazoContestacaoHoras';
 const PRAZOS: Readonly<
   Record<
     CampoDePrazo,
-    { rotulo: string; unidade: string; min: number; max: number; ajuda: string; leitura: string }
+    { rotulo: string; unidade: string; min: number; max: number; leitura: string }
   >
 > = {
   // DEC-090 — curto por desenho: a fila anda um por vez.
@@ -413,8 +406,6 @@ const PRAZOS: Readonly<
     unidade: 'min',
     min: 5,
     max: 1440,
-    ajuda:
-      'Quanto tempo cada pessoa da fila tem para aceitar antes de a vez passar à próxima. Entre 5 minutos e 24 horas; o padrão é 60. Vale para os próximos convites, não para o que já está correndo.',
     leitura: 'para cada convidado responder antes de a vez passar ao próximo',
   },
   // DEC-132 — cobre fim de semana com o padrão de 72h.
@@ -423,8 +414,6 @@ const PRAZOS: Readonly<
     unidade: 'h',
     min: 1,
     max: 336,
-    ajuda:
-      'Depois do check-out do médico, por quanto tempo a chefia ainda pode contestar o plantão. Entre 1 hora e 14 dias; o padrão é 72. Vale para os próximos check-outs.',
     leitura: 'para a chefia contestar um check-out',
   },
 };
@@ -496,7 +485,6 @@ function Prazo({
           value={valor}
           onChange={(e) => setValor(e.target.value)}
         />
-        <p className="text-xs text-gelo-3">{meta.ajuda}</p>
       </div>
       <ErroDeFormulario mensagem={erro} />
       <Button
@@ -595,11 +583,6 @@ function AjustesFiscais({
         />
         <span>
           <span className="block text-sm text-gelo">Aceitar subcontratação (modelo B)</span>
-          <span className="block text-xs text-gelo-3">
-            O titular continua contratado e subcontrata o substituto. Gera duas notas e pode
-            tributar o mesmo valor duas vezes; o titular vê esse alerta antes de escolher. O padrão
-            é o modelo A.
-          </span>
         </span>
       </label>
 
@@ -612,10 +595,6 @@ function AjustesFiscais({
           value={iss}
           onChange={(e) => setIss(e.target.value)}
         />
-        <p className="text-xs text-gelo-3">
-          Preencha se o município manda a instituição reter o ISS do médico (entre 2% e 5%). Entra
-          no rascunho da NFS-e de cada plantão.
-        </p>
       </div>
 
       <ErroDeFormulario mensagem={erro} />

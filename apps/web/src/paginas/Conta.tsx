@@ -64,10 +64,6 @@ export function Conta({
 
       <section aria-label="Sessão" className="rounded-xl border border-borda bg-tinta-2 p-5">
         <p className="sinal">Sessão</p>
-        <p className="mt-2 text-xs leading-relaxed text-gelo-3">
-          Sua sessão fica num cookie que o JavaScript da página não consegue ler, e é renovada
-          automaticamente. Sair encerra a sessão neste e em qualquer outro dispositivo.
-        </p>
         <Button variante="contorno" className="mt-4 w-full" onClick={aoSair}>
           Sair
         </Button>

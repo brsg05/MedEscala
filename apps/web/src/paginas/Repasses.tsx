@@ -17,7 +17,7 @@ import { Button } from '@/componentes/ui/button';
 import { BotaoTermos } from '@/componentes/Termos';
 import { Etiqueta } from '@/componentes/ui/etiqueta';
 import { EstadoVazio } from '@/componentes/EstadoVazio';
-import { AvisoDeResponsabilidade, CadeiaTriade } from '@/componentes/CadeiaTriade';
+import { CadeiaTriade } from '@/componentes/CadeiaTriade';
 import { cadeiaDe } from '@/componentes/cadeia';
 
 /** O estado do repasse vira cor pela mesma semântica do resto do app. */
@@ -35,13 +35,6 @@ function corDoStatus(status: StatusRepasse): 'turno' | 'vazio' | 'repasse' | 'es
     default:
       return 'repasse';
   }
-}
-
-/** Um repasse ainda em curso mantém o titular responsável — e isso precisa ser dito. */
-function emCurso(status: StatusRepasse): boolean {
-  return (
-    status === 'SOLICITADO' || status === 'SUBSTITUTO_ACEITO' || status === 'AGUARDANDO_APROVACAO'
-  );
 }
 
 /**
@@ -68,9 +61,6 @@ export function Repasses({ usuarioId }: { usuarioId: string }): React.JSX.Elemen
         >
           Repasses
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-gelo-2">
-          Todo repasse percorre três partes. Sem as três, a escala oficial não muda.
-        </p>
       </header>
 
       {lista.erro !== null && (
@@ -100,12 +90,7 @@ export function Repasses({ usuarioId }: { usuarioId: string }): React.JSX.Elemen
         ))}
 
       {!lista.carregando && lista.erro === null && repasses.length === 0 && (
-        <EstadoVazio
-          titulo="Nenhum repasse aberto"
-          descricao="Quando você precisar passar um plantão, o pedido nasce na tela de Escala e vira um termo com as três assinaturas registradas e carimbo de tempo."
-          funcoes="F07 pedido · F11 aprovação · F13 termo"
-          sprint="Sprints 3–4"
-        />
+        <EstadoVazio titulo="Nenhum repasse aberto" descricao="Você não tem repasses." />
       )}
     </div>
   );
@@ -183,12 +168,6 @@ function CartaoDeRepasse({
         <p className="sinal mb-3">Cadeia de assinatura</p>
         <CadeiaTriade elos={cadeiaDe(repasse)} />
       </div>
-
-      {emCurso(repasse.status) && (
-        <div className="mt-4">
-          <AvisoDeResponsabilidade />
-        </div>
-      )}
 
       {podeMexer && repasse.filaEsgotada && (
         <p className="mt-4 rounded-lg border border-vazio/30 bg-vazio-fundo px-3 py-2.5 text-sm leading-relaxed text-vazio">
@@ -274,7 +253,7 @@ function FilaDeConvites({
               <span className="block truncate text-sm text-gelo">{c.medico.nome}</span>
               <span className="dado block text-[0.6875rem] text-gelo-3">
                 CRM/{c.medico.crmUf} {c.medico.crm} ·{' '}
-                {c.origem === 'MATCHING' ? 'matching' : 'indicação'}
+                {c.origem === 'MATCHING' ? 'automático' : 'indicação'}
               </span>
             </span>
             <span className="text-right text-xs text-gelo-2">

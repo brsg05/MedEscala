@@ -66,7 +66,7 @@ describe('retenções do rascunho fiscal (F14)', () => {
       data: HOJE,
     });
     expect(r.linhas).toEqual([]);
-    expect(r.observacoes[0]).toContain('não são simulados');
+    expect(r.observacoes[0]).toContain('não são calculados');
   });
 
   it('a regra tem fonte para cada número (§16)', () => {

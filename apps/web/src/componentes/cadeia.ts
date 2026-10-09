@@ -31,10 +31,7 @@ export function cadeiaDe(repasse: RepasseResponse): readonly [Elo, Elo, Elo] {
       papel: 'SUBSTITUTO',
       nome: repasse.convidadoDaVez.nome,
       registro: `CRM/${repasse.convidadoDaVez.crmUf} ${repasse.convidadoDaVez.crm}`,
-      acao:
-        repasse.origemConvite === 'MATCHING'
-          ? 'convidado pelo matching, ainda não respondeu'
-          : 'convidado, ainda não respondeu',
+      acao: 'convidado, ainda não respondeu',
       em: repasse.prazoConviteAte === null ? null : `até ${formatarHora(repasse.prazoConviteAte)}`,
       estado: 'aguardando',
     };
@@ -43,7 +40,7 @@ export function cadeiaDe(repasse: RepasseResponse): readonly [Elo, Elo, Elo] {
       papel: 'SUBSTITUTO',
       nome: null,
       registro: null,
-      acao: 'ninguém aceitou — o titular pode indicar outras pessoas',
+      acao: 'ninguém aceitou',
       em: null,
       estado: 'recusado',
     };
@@ -94,7 +91,7 @@ export function cadeiaDe(repasse: RepasseResponse): readonly [Elo, Elo, Elo] {
               ? `recusou o substituto anterior: ${repasse.justificativaRecusa ?? ''}`
               : s === 'CANCELADO'
                 ? 'não chegou a decidir'
-                : 'etapa bloqueante, ainda não alcançada',
+                : 'aguardando',
       em: repasse.aprovadoEm === null ? null : formatarDataHora(repasse.aprovadoEm),
       estado: recusouAntes ? 'recusado' : estadoInstituicao,
     },

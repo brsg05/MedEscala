@@ -11,7 +11,7 @@ import { useRecurso } from '@/hooks/useRecurso';
 import { Button } from '@/componentes/ui/button';
 import { Label } from '@/componentes/ui/label';
 import { EstadoVazio } from '@/componentes/EstadoVazio';
-import { AvisoDeResponsabilidade, CadeiaTriade } from '@/componentes/CadeiaTriade';
+import { CadeiaTriade } from '@/componentes/CadeiaTriade';
 import { cadeiaDe } from '@/componentes/cadeia';
 
 /**
@@ -102,9 +102,7 @@ export function Decisoes({ recorte }: { recorte: Recorte }): React.JSX.Element {
       {!fila.carregando && fila.erro === null && decisoes.length === 0 && (
         <EstadoVazio
           titulo="Nada esperando por você"
-          descricao="Convites para cobrir plantão e pedidos de substituição para aprovar aparecem aqui, um de cada vez."
-          funcoes="F10 convite e aceite · F11 aprovação"
-          sprint="Sprints 2–3"
+          descricao="Nenhum convite ou aprovação pendente."
         />
       )}
     </div>
@@ -172,13 +170,6 @@ function CartaoDeConviteDaVaga({
           </dd>
         </div>
       </dl>
-
-      <p className="mt-4 text-xs leading-relaxed text-gelo-3">
-        {decisao.origemConvite === 'MATCHING'
-          ? 'Você foi chamado porque declarou disponibilidade para este horário.'
-          : 'A instituição indicou você para esta vaga.'}{' '}
-        Aceitando, o plantão entra na sua escala na hora.
-      </p>
 
       {erro !== null && (
         <p
@@ -297,10 +288,6 @@ function CartaoDeDecisao({
       <div className="mt-5">
         <p className="sinal mb-3">Cadeia</p>
         <CadeiaTriade elos={cadeiaDe(decisao.repasse)} />
-      </div>
-
-      <div className="mt-4">
-        <AvisoDeResponsabilidade />
       </div>
 
       {erro !== null && (

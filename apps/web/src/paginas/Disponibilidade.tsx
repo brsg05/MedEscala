@@ -43,10 +43,6 @@ export function Disponibilidade(): React.JSX.Element {
         >
           Disponibilidade
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-gelo-2">
-          Uma chefia só encontra você para os horários que você declarar aqui. Fora dessas janelas,
-          você não aparece em busca nenhuma — mas pode procurar vagas abertas e se candidatar.
-        </p>
       </header>
 
       {cadastro.dado !== null && !cadastro.dado.verificado && (
@@ -72,7 +68,7 @@ export function Disponibilidade(): React.JSX.Element {
 
         {!janelas.carregando && futuras.length === 0 && janelas.erro === null && (
           <p className="rounded-xl border border-dashed border-borda px-4 py-6 text-center text-sm text-gelo-3">
-            Nenhuma janela futura. Declare uma acima para começar a aparecer nas buscas.
+            Nenhuma janela futura.
           </p>
         )}
 
@@ -172,9 +168,6 @@ function NovaJanela({ aoCriar }: { aoCriar: () => void }): React.JSX.Element {
           value={valorMinimo}
           onChange={(e) => setValorMinimo(e.target.value)}
         />
-        <p className="text-xs text-gelo-3">
-          Vagas abaixo deste valor não mostram você como candidato.
-        </p>
       </div>
 
       <ErroDeFormulario mensagem={erro} />

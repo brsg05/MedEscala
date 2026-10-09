@@ -113,7 +113,7 @@ export function calcularRetencoes(entrada: {
       retidoCentavos: 0,
       liquidoCentavos: valor,
       observacoes: [
-        'Pagamento a pessoa física (RPA): INSS e IRRF dependem da tabela da pessoa física e não são simulados no MVP (DEC-206).',
+        'Pagamento a pessoa física (RPA): INSS e IRRF dependem da tabela da pessoa física e não são calculados neste rascunho.',
       ],
     };
   }

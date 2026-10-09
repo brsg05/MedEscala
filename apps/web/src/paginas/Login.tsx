@@ -37,11 +37,6 @@ function TeseDoProduto(): React.JSX.Element {
           </li>
         ))}
       </ol>
-
-      <p className="mt-3 text-xs leading-relaxed text-gelo-2">
-        Um plantão só muda de mãos quando as três partes registram o ato. Até lá, quem estava
-        escalado continua responsável.
-      </p>
     </div>
   );
 }

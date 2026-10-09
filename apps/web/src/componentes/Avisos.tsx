@@ -73,9 +73,7 @@ export function Avisos(): React.JSX.Element {
       {aberto && (
         <Painel titulo="Avisos" aoFechar={() => setAberto(false)}>
           {itens.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gelo-3">
-              Nenhum aviso ainda. Convites, aprovações e mudanças na sua escala aparecem aqui.
-            </p>
+            <p className="py-6 text-center text-sm text-gelo-3">Nenhum aviso.</p>
           ) : (
             <>
               {naoLidas > 0 && (

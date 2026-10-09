@@ -61,7 +61,7 @@ describe('conteúdo do termo (F13)', () => {
     expect(texto).toContain('R$');
     expect(texto).toContain('1.200,00');
     expect(texto).toContain('72 horas');
-    expect(texto).toContain('RN01');
+    expect(texto).toContain('repasse aprovado pela instituição');
   });
 
   it('o termo de substituição tem as três partes e o modelo fiscal', () => {

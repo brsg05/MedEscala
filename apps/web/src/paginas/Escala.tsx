@@ -165,10 +165,7 @@ export function Escala(): React.JSX.Element {
         </div>
       </section>
 
-      {/*
-        RN03, metade não-bloqueante: a plataforma AVISA que a sequência passa de
-        24h, mas não impede. Impedir seria definir jornada, o que a RN09 proíbe.
-      */}
+      {/* Avisa, mas não impede: impedir seria definir jornada (RN03, RN09). */}
       {agenda.dado?.alertaCargaHoraria != null && (
         <p className="rounded-lg border border-espera/30 bg-espera-fundo px-3 py-2.5 text-sm text-espera">
           <strong className="font-semibold">
@@ -211,9 +208,7 @@ export function Escala(): React.JSX.Element {
               </div>
 
               {p.status === 'EM_REPASSE' && (
-                <p className="mt-3 text-xs text-repasse">
-                  Repasse em andamento — você segue responsável até a chefia aprovar.
-                </p>
+                <p className="mt-3 text-xs text-repasse">Repasse em andamento.</p>
               )}
 
               <ExecucaoDoPlantao plantao={p} perspectiva="medico" aoMudar={agenda.recarregar} />
@@ -223,12 +218,7 @@ export function Escala(): React.JSX.Element {
       )}
 
       {!agenda.carregando && agenda.erro === null && doDia.length === 0 && (
-        <EstadoVazio
-          titulo="Dia livre na sua escala"
-          descricao="Quando uma instituição escalar você, o plantão aparece como bloco na régua acima — e é dali que você abre um pedido de repasse."
-          funcoes="F05 agenda · F06 vagas"
-          sprint="Sprints 1–2"
-        />
+        <EstadoVazio titulo="Dia livre na sua escala" descricao="Você não tem plantão neste dia." />
       )}
 
       {plantaoEmRepasse !== null && (

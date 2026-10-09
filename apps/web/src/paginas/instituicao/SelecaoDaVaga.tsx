@@ -61,7 +61,7 @@ export function ConvidarParaVaga({
           aoMudar={setFila}
           excluir={(jaConvidados.dado ?? []).map((c) => c.medico.id)}
           buscarOferecidos={api.candidatos}
-          semIndicacao="Ninguém indicado. Sem indicação, o sistema convida, 5 por vez, quem se ofereceu para este horário. Quem aceitar primeiro na sua vez fica com a vaga."
+          semIndicacao="Ninguém indicado ainda."
         />
       )}
 
@@ -74,7 +74,7 @@ export function ConvidarParaVaga({
           Voltar
         </Button>
         <Button type="button" className="flex-1" disabled={enviando} onClick={() => void enviar()}>
-          {enviando ? 'Convidando…' : fila.length > 0 ? 'Convidar' : 'Convidar pelo matching'}
+          {enviando ? 'Convidando…' : fila.length > 0 ? 'Convidar' : 'Convidar disponíveis'}
         </Button>
       </div>
     </Painel>
@@ -196,7 +196,7 @@ export function FilaDaVaga({
               <span className="block truncate text-sm text-gelo">{c.medico.nome}</span>
               <span className="dado block text-[0.6875rem] text-gelo-3">
                 CRM/{c.medico.crmUf} {c.medico.crm} ·{' '}
-                {c.origem === 'MATCHING' ? 'matching' : 'indicação'}
+                {c.origem === 'MATCHING' ? 'automático' : 'indicação'}
               </span>
             </span>
             <span className="text-right text-xs text-gelo-2">

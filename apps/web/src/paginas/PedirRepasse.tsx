@@ -88,9 +88,6 @@ export function PedirRepasse({ plantao, aoFechar, aoAbrir }: Props): React.JSX.E
             placeholder="Ex.: convocação para junta médica no mesmo horário"
             className="w-full rounded-lg border border-borda bg-tinta-3 px-3 py-2.5 text-base text-gelo placeholder:text-gelo-3 focus:border-turno focus:outline-none"
           />
-          <p className="text-xs text-gelo-3">
-            Fica registrado na trilha de auditoria e é visto pela chefia.
-          </p>
         </div>
 
         <MontadorDeFila plantaoId={plantao.id} fila={fila} aoMudar={setFila} />
@@ -99,11 +96,6 @@ export function PedirRepasse({ plantao, aoFechar, aoAbrir }: Props): React.JSX.E
           <EscolhaDoModelo plantao={plantao} modelo={modelo} aoMudar={setModelo} />
         )}
 
-        <p className="rounded-lg border border-espera/25 bg-espera-fundo px-3 py-2.5 text-xs leading-relaxed text-espera">
-          Abrir o pedido não transfere o plantão. Enquanto a instituição não aprovar, a escala
-          oficial não muda e <strong className="font-semibold">você segue responsável</strong>.
-        </p>
-
         <ErroDeFormulario mensagem={erro} />
 
         <div className="flex gap-3">
@@ -111,7 +103,7 @@ export function PedirRepasse({ plantao, aoFechar, aoAbrir }: Props): React.JSX.E
             Cancelar
           </Button>
           <Button type="submit" className="flex-1" disabled={enviando}>
-            {enviando ? 'Abrindo…' : fila.length > 0 ? 'Abrir e convidar' : 'Abrir convite aberto'}
+            {enviando ? 'Abrindo…' : fila.length > 0 ? 'Abrir e convidar' : 'Abrir pedido'}
           </Button>
         </div>
       </form>

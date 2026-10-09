@@ -63,9 +63,7 @@ export function VagasAbertas(): React.JSX.Element {
 
       {!vagas.carregando && vagas.erro === null && lista.length === 0 && (
         <p className="rounded-xl border border-dashed border-borda px-4 py-6 text-center text-sm text-gelo-3">
-          {todas
-            ? 'Nenhuma vaga aberta no momento.'
-            : 'Nenhuma vaga aberta compatível com você agora. Em "Todas", aparecem as outras, com o motivo.'}
+          {todas ? 'Nenhuma vaga aberta no momento.' : 'Nenhuma vaga compatível agora.'}
         </p>
       )}
 

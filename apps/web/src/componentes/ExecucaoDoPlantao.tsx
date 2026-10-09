@@ -342,7 +342,6 @@ function Contestacao({
             onChange={(e) => setTexto(e.target.value)}
             className={CAMPO_DE_TEXTO}
           />
-          <p className="text-xs text-gelo-3">Uma resposta só. A decisão é da instituição.</p>
           <Button tamanho="pequeno" className="w-full" disabled={enviando} onClick={responder}>
             Enviar resposta
           </Button>
@@ -355,11 +354,6 @@ function Contestacao({
 
       {perspectiva === 'instituicao' && (
         <div className="space-y-2">
-          {contestacao.resposta === null && (
-            <p className="text-xs text-gelo-3">
-              O médico ainda não respondeu. Você pode decidir assim mesmo.
-            </p>
-          )}
           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Decisão">
             {(['IMPROCEDENTE', 'PROCEDENTE'] as const).map((r) => (
               <button

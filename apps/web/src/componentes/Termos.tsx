@@ -49,19 +49,13 @@ function TermosDoPlantao({
       {termos.carregando && <div className="h-24 animate-pulse rounded-lg bg-tinta-3" />}
       <ErroDeFormulario mensagem={termos.erro} />
       {!termos.carregando && termos.erro === null && lista.length === 0 && (
-        <p className="text-sm text-gelo-3">
-          Nenhum termo ainda. O contrato nasce quando um médico é escalado.
-        </p>
+        <p className="text-sm text-gelo-3">Nenhum termo ainda.</p>
       )}
       <ul className="space-y-3">
         {lista.map((t) => (
           <CartaoDoTermo key={t.id} termo={t} />
         ))}
       </ul>
-      <p className="mt-4 text-xs leading-relaxed text-gelo-3">
-        Assinatura simulada: cada parte aceitou por uma ação no app, registrada com data, hora e o
-        hash do conteúdo. Não substitui assinatura com certificado digital.
-      </p>
     </Painel>
   );
 }
@@ -114,7 +108,6 @@ function CartaoDoTermo({ termo }: { termo: TermoResponse }): React.JSX.Element {
         {termo.pendentes.map((p) => (
           <li key={p} className="text-xs text-espera">
             ○ {ROTULO_PAPEL_NO_TERMO[p]}: aguardando aceite
-            {p === 'MEDICO' && <span className="block pl-4">o check-in vale como aceite</span>}
           </li>
         ))}
       </ul>

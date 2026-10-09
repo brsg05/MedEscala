@@ -60,8 +60,7 @@ export function EscalarMedico({
 
         {!candidatos.carregando && candidatos.erro === null && lista.length === 0 && (
           <p className="rounded-lg border border-dashed border-borda px-4 py-5 text-sm leading-relaxed text-gelo-3">
-            Ninguém se ofereceu para este horário. Só aparecem médicos verificados, da especialidade
-            exigida, que declararam disponibilidade cobrindo o plantão inteiro.
+            Ninguém disponível neste horário.
           </p>
         )}
 
@@ -86,12 +85,6 @@ export function EscalarMedico({
           </div>
         ))}
       </div>
-
-      {lista.length > 0 && (
-        <p className="mt-4 text-xs text-gelo-3">
-          Em ordem alfabética. A ordenação por aderência e reputação (F09) ainda não foi definida.
-        </p>
-      )}
     </Painel>
   );
 }

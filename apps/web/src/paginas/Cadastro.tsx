@@ -227,12 +227,6 @@ export function Cadastro({ aoEntrar, aoVoltar }: Props): React.JSX.Element {
             <Erro nome="senha" />
           </div>
 
-          <p className="rounded-lg border border-espera/25 bg-espera-fundo px-3 py-2.5 text-xs leading-relaxed text-espera">
-            {tipo === 'MEDICO'
-              ? 'Seu CRM é conferido pela plataforma antes de você poder ser escalado. Até lá, você já pode declarar disponibilidade.'
-              : 'O CNPJ é conferido pela plataforma antes de a instituição publicar vagas. Até lá, você já pode montar unidades e setores.'}
-          </p>
-
           <ErroDeFormulario mensagem={erro} />
 
           <Button type="submit" tamanho="grande" className="w-full" disabled={enviando}>

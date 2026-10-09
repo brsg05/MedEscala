@@ -53,10 +53,6 @@ export function Operador(): React.JSX.Element {
               ? 'Nada a conferir'
               : `${String(total)} a conferir`}
         </h1>
-        <p className="mt-2 text-sm leading-relaxed text-gelo-2">
-          Confira cada registro na fonte oficial antes de aprovar. O sistema registra quem atestou e
-          quando.
-        </p>
       </header>
 
       <ErroDeFormulario mensagem={erro ?? pendencias.erro} />

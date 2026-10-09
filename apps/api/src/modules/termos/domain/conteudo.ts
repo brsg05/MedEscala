@@ -15,7 +15,7 @@ import {
  */
 
 /** Versão do modelo de texto. Muda quando as cláusulas mudam; termos antigos guardam a sua. */
-export const VERSAO_DO_MODELO = 1;
+export const VERSAO_DO_MODELO = 2;
 
 export interface Parte {
   papel: PapelNoTermo;
@@ -107,7 +107,7 @@ export function montarContrato(dados: {
       `Objeto. ${dados.medico.nome} presta serviço médico em ${p.especialidade} no plantão de ${p.setor} (${p.unidade}, ${p.instituicao}), de ${quando(p)}.`,
       `Valor. A instituição paga ${formatarCentavos(p.valorCentavos)} pelo plantão cumprido, com as retenções legais aplicáveis. O valor fica retido até o fim do prazo de contestação e então é liberado ao médico.`,
       `Execução. O cumprimento é registrado por check-in e check-out no MedEscala. A instituição pode contestar o plantão em até ${String(dados.prazoContestacaoHoras)} horas após o check-out, com justificativa; o médico pode responder antes da decisão.`,
-      'Substituição. O médico só deixa de responder pelo plantão com um repasse aprovado pela instituição. Até a aprovação, a responsabilidade continua sendo dele (RN01).',
+      'Substituição. O médico só deixa de responder pelo plantão com um repasse aprovado pela instituição. Até a aprovação, a responsabilidade continua sendo dele.',
       `Natureza. Prestação de serviço sem vínculo empregatício, na modalidade ${p.modeloContratacao}.`,
       'Assinatura. As partes aceitaram este termo por ação registrada no MedEscala, com data, hora e hash do conteúdo. É um aceite simulado, que não substitui assinatura com certificado digital.',
     ],
@@ -138,7 +138,7 @@ export function montarSubstituicao(dados: {
     repasse: dados.repasse,
     clausulas: [
       `Objeto. ${dados.titular.nome} transfere a ${dados.substituto.nome} a execução do plantão de ${p.setor} (${p.unidade}, ${p.instituicao}), de ${quando(p)}, no valor de ${formatarCentavos(p.valorCentavos)}.`,
-      `Aprovação. A transferência só produz efeito com a aprovação da instituição, registrada em ${formatarDataHora(dados.aprovadoEm)} (RN01). Antes dela, o titular respondia pelo plantão.`,
+      `Aprovação. A transferência só produz efeito com a aprovação da instituição, registrada em ${formatarDataHora(dados.aprovadoEm)}. Antes dela, o titular respondia pelo plantão.`,
       `Responsabilidade. A partir da aprovação, ${dados.substituto.nome} é o executante e o responsável pelo plantão perante a instituição.`,
       `Modelo fiscal. ${modelo}`,
       `Motivo declarado pelo titular: "${dados.repasse.motivo.replace(/[.\s]+$/u, '')}".`,

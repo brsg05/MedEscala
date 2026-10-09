@@ -201,16 +201,15 @@ describe('sem sessão', () => {
     expect(vi.mocked(fetch).mock.calls.length).toBe(chamadasAntes);
   });
 
-  it('leva ao cadastro, que avisa da conferência ANTES de criar a conta (DEC-059)', async () => {
+  it('leva ao cadastro, com os campos de médico e de instituição', async () => {
     responderPorRota(SEM_SESSAO);
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Criar conta' }));
 
-    expect(await screen.findByText(/CRM é conferido pela plataforma/u)).toBeDefined();
+    expect(await screen.findByLabelText('CRM')).toBeDefined();
 
     fireEvent.click(screen.getByRole('radio', { name: 'Represento uma instituição' }));
-    expect(screen.getByText(/CNPJ é conferido pela plataforma/u)).toBeDefined();
     expect(screen.getByLabelText('CNPJ')).toBeDefined();
   });
 });
@@ -417,7 +416,7 @@ describe('fila de convites do repasse (DEC-087)', () => {
     });
 
     // Sem ninguém na fila, o pedido vira convite aberto.
-    expect(screen.getByRole('button', { name: 'Abrir convite aberto' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Abrir pedido' })).toBeDefined();
 
     fireEvent.click(await screen.findByRole('button', { name: 'Adicionar' }));
     expect(screen.getByRole('button', { name: 'Na fila' })).toBeDefined();
@@ -477,7 +476,7 @@ describe('fila de convites do repasse (DEC-087)', () => {
     render(<App />);
 
     expect(await screen.findByText(/Ninguém aceitou\. Indique outras pessoas/u)).toBeDefined();
-    expect(screen.getByText(/ninguém aceitou — o titular pode indicar/u)).toBeDefined();
+    expect(screen.getByText('ninguém aceitou')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Indicar mais pessoas' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Cancelar repasse' })).toBeDefined();
   });
@@ -501,7 +500,7 @@ describe('fila de convites do repasse (DEC-087)', () => {
     render(<App />);
 
     expect(await screen.findByText('Bruno Lacerda')).toBeDefined();
-    expect(screen.getByText('convidado pelo matching, ainda não respondeu')).toBeDefined();
+    expect(screen.getByText('convidado, ainda não respondeu')).toBeDefined();
   });
 });
 
@@ -834,7 +833,7 @@ describe('termos (F13)', () => {
 
     expect(await screen.findByText('Contrato do plantão')).toBeDefined();
     expect(screen.getByText(/Escalou o médico/u)).toBeDefined();
-    expect(screen.getByText('o check-in vale como aceite')).toBeDefined();
+    expect(screen.getByText(/aguardando aceite/u)).toBeDefined();
     expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeDefined();
   });
 });
