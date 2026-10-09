@@ -1,0 +1,55 @@
+{
+  "name": "@medescala/api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "BFF NestJS — única porta de escrita do MedEscala (D2)",
+  "scripts": {
+    "build": "nest build",
+    "dev": "nest start --watch",
+    "start": "node dist/main.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --config vitest.config.mts",
+    "test:e2e": "vitest run --config vitest.e2e.config.mts",
+    "db:policies": "tsx --env-file=.env prisma/aplicar-policies.ts",
+    "db:verificar-policies": "tsx --env-file=.env prisma/verificar-policies.ts",
+    "db:nova-migration": "tsx --env-file=.env prisma/nova-migration.ts"
+  },
+  "prisma": {
+    "seed": "tsx --env-file=.env prisma/seed.ts"
+  },
+  "dependencies": {
+    "@medescala/contracts": "workspace:*",
+    "@nestjs/bullmq": "^12.0.0",
+    "@nestjs/common": "^11.2.3",
+    "@nestjs/config": "^4.0.4",
+    "@nestjs/core": "^11.2.3",
+    "@nestjs/platform-express": "^11.2.3",
+    "@prisma/client": "^6.19.3",
+    "@supabase/supabase-js": "^2.116.0",
+    "bullmq": "^6.3.11",
+    "cookie-parser": "^1.4.7",
+    "ioredis": "^6.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.6.2"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.24",
+    "@nestjs/schematics": "^11.1.0",
+    "@nestjs/testing": "^11.2.3",
+    "@swc/core": "^1.16.2",
+    "@testcontainers/postgresql": "^12.1.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.13.4",
+    "@types/pg": "^8.23.1",
+    "@types/supertest": "^7.2.1",
+    "pg": "^8.23.0",
+    "prisma": "6.19.3",
+    "supertest": "^7.2.2",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "unplugin-swc": "^1.6.0",
+    "vitest": "^5.0.0"
+  }
+}
