@@ -1,0 +1,116 @@
+@import 'tailwindcss';
+
+/* =============================================================================
+ * MedEscala — sistema de tokens
+ *
+ * Duas decisões governam tudo aqui:
+ *
+ * 1. O app vive de madrugada. O buraco na escala aparece às 3h, e é aí que o
+ *    médico decide. O fundo é tinta, não papel — e o contraste é calibrado para
+ *    tela no escuro, não para impressão.
+ *
+ * 2. Cor é informação, não decoração. Cada cor de estado corresponde a um estado
+ *    de cobertura do plantão. Nenhuma cor existe para "enfeitar uma seção".
+ *
+ * Tipografia: Archivo carrega a personalidade em tratamento de sinalização —
+ * caixa alta, tracking aberto, como placa de corredor de hospital. IBM Plex Mono
+ * não é utilitário de rodapé: ele é protagonista, porque o artefato do domínio é
+ * uma grade de horários onde os números precisam alinhar em coluna.
+ * ========================================================================== */
+
+@theme {
+  /* --- superfícies ------------------------------------------------------- */
+  --color-tinta: #0e1220;
+  --color-tinta-2: #161c30;
+  --color-tinta-3: #202844;
+  --color-borda: #2c3555;
+
+  /* --- texto ------------------------------------------------------------- */
+  --color-gelo: #e6eaf4;
+  --color-gelo-2: #9aa5c4;
+  --color-gelo-3: #6b7699;
+
+  /* --- estados de cobertura (a paleta É a informação) --------------------- */
+  /* seu turno, confirmado */
+  --color-turno: #35c2a8;
+  --color-turno-fundo: #0f2e2b;
+  /* turno descoberto — a crise do domínio */
+  --color-vazio: #ff4d6d;
+  --color-vazio-fundo: #33111e;
+  /* repasse em curso — o diferencial do produto */
+  --color-repasse: #8b7bff;
+  --color-repasse-fundo: #1d1a3d;
+  /* aguardando aprovação da chefia (RN01) */
+  --color-espera: #f2b134;
+  --color-espera-fundo: #2e2210;
+
+  /* --- tipografia -------------------------------------------------------- */
+  --font-sinal: 'Archivo', system-ui, sans-serif;
+  --font-corpo: 'Public Sans', system-ui, sans-serif;
+  --font-dado: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    background: var(--color-tinta);
+    color-scheme: dark;
+  }
+
+  body {
+    font-family: var(--font-corpo);
+    color: var(--color-gelo);
+    background: var(--color-tinta);
+    -webkit-font-smoothing: antialiased;
+    /* `dvh` e não `vh`: a barra de endereço do navegador móvel muda a altura
+       visível, e `vh` corta o conteúdo justamente no rodapé de ação. */
+    min-height: 100dvh;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  /* Foco sempre visível — o app é operado com pressa e às vezes por teclado
+     na estação da chefia. */
+  :focus-visible {
+    outline: 2px solid var(--color-turno);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: var(--color-repasse);
+    color: white;
+  }
+}
+
+@layer components {
+  /* Rótulo de sinalização: caixa alta, tracking aberto, peso alto.
+     Referência concreta: placa de corredor de hospital. */
+  .sinal {
+    font-family: var(--font-sinal);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 0.6875rem;
+    color: var(--color-gelo-3);
+  }
+
+  /* Números do domínio: horário, CRM, protocolo, valor. Tabular para alinhar
+     em coluna, como na escala impressa. */
+  .dado {
+    font-family: var(--font-dado);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
