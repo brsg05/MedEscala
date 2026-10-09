@@ -64,6 +64,11 @@ const STATUS_POR_CODIGO: Readonly<Record<string, number>> = {
   PRAZO_DE_CONTESTACAO_ENCERRADO: HttpStatus.CONFLICT,
   REPASSE_EM_ANDAMENTO: HttpStatus.CONFLICT,
   CONTESTACAO_JA_RESPONDIDA: HttpStatus.CONFLICT,
+
+  // --- vaga aberta (F10) -------------------------------------------------------
+  VAGA_NAO_ABERTA: HttpStatus.CONFLICT,
+  CANDIDATURA_NAO_ENCONTRADA: HttpStatus.NOT_FOUND,
+  CANDIDATURA_JA_RESPONDIDA: HttpStatus.CONFLICT,
 };
 
 @Catch(ErroDominio)

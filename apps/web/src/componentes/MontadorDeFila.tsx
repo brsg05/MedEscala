@@ -12,9 +12,19 @@ interface Props {
   plantaoId: string;
   fila: readonly CandidatoResponse[];
   aoMudar: (fila: CandidatoResponse[]) => void;
-  /** Quem já foi convidado neste repasse e não pode voltar à fila. */
+  /** Quem já foi convidado nesta fila e não pode voltar a ela. */
   excluir?: readonly string[];
+  /**
+   * De onde vem a lista de quem se ofereceu: no repasse, os substitutos (para o
+   * titular); na vaga, os candidatos (para a chefia, F10). O padrão é o repasse.
+   */
+  buscarOferecidos?: (plantaoId: string) => Promise<CandidatoResponse[]>;
+  /** O que acontece se ninguém for indicado — muda entre repasse e vaga. */
+  semIndicacao?: string;
 }
+
+const SEM_INDICACAO_NO_REPASSE =
+  'Ninguém indicado. Sem indicação, o convite é aberto: o sistema chama, 5 por vez, quem se ofereceu para este horário.';
 
 /**
  * Monta a fila de convites da Forma 1 (DEC-087, DEC-089).
@@ -29,8 +39,10 @@ export function MontadorDeFila({
   fila,
   aoMudar,
   excluir = [],
+  buscarOferecidos = api.substitutos,
+  semIndicacao = SEM_INDICACAO_NO_REPASSE,
 }: Props): React.JSX.Element {
-  const buscar = useCallback(() => api.substitutos(plantaoId), [plantaoId]);
+  const buscar = useCallback(() => buscarOferecidos(plantaoId), [plantaoId, buscarOferecidos]);
   const oferecidos = useRecurso(buscar, [plantaoId]);
 
   const cheia = fila.length >= LIMITE_DA_FILA;
@@ -68,8 +80,7 @@ export function MontadorDeFila({
 
         {fila.length === 0 ? (
           <p className="rounded-lg border border-dashed border-borda px-3 py-3 text-xs leading-relaxed text-gelo-3">
-            Ninguém indicado. Sem indicação, o convite é aberto: o sistema chama, 5 por vez, quem se
-            ofereceu para este horário.
+            {semIndicacao}
           </p>
         ) : (
           <ol className="space-y-1.5">

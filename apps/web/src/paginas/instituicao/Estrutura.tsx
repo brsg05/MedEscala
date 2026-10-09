@@ -136,8 +136,8 @@ export function Estrutura({ usuario }: { usuario: UsuarioAutenticado }): React.J
             <p className="sinal">Prazos</p>
             <Prazo
               instituicaoId={instituicaoId}
-              campo="prazoConviteRepasseMinutos"
-              atual={dado.instituicao.prazoConviteRepasseMinutos}
+              campo="prazoConviteMinutos"
+              atual={dado.instituicao.prazoConviteMinutos}
               editavel={admin}
               aoSalvar={estrutura.recarregar}
             />
@@ -387,7 +387,7 @@ function ConcederChefia({
   );
 }
 
-type CampoDePrazo = 'prazoConviteRepasseMinutos' | 'prazoContestacaoHoras';
+type CampoDePrazo = 'prazoConviteMinutos' | 'prazoContestacaoHoras';
 
 /** O que cada prazo significa, em uma tabela só — os dois formulários são iguais. */
 const PRAZOS: Readonly<
@@ -397,7 +397,7 @@ const PRAZOS: Readonly<
   >
 > = {
   // DEC-090 — curto por desenho: a fila anda um por vez.
-  prazoConviteRepasseMinutos: {
+  prazoConviteMinutos: {
     rotulo: 'Prazo de cada convite de repasse (minutos)',
     unidade: 'min',
     min: 5,

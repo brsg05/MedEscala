@@ -41,7 +41,8 @@ export class CredenciamentoController {
   }
 
   /** DEC-091 — apontamento individual do substituto por CRM + UF exato. */
-  @Perfis('MEDICO')
+  // DEC-091 — o titular aponta no repasse; a instituição aponta na vaga (F10).
+  @Perfis('MEDICO', 'ADMIN_INSTITUICAO', 'CHEFIA_ESCALA')
   @Get('busca')
   async buscarPorCrm(
     @Query(new ZodValidationPipe(BuscaPorCrmQuery)) consulta: BuscaPorCrmQuery,

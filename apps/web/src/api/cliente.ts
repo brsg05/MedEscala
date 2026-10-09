@@ -2,10 +2,12 @@ import {
   AbrirRepasseRequest,
   AgendaResponse,
   CadastroRequest,
+  CandidaturaResponse,
   CandidatoResponse,
   ConcederChefiaRequest,
   ConfiguracaoInstituicaoRequest,
   ContestarPlantaoRequest,
+  ConvidarParaVagaRequest,
   ConviteResponse,
   COOKIE_CSRF_TOKEN,
   CriarDisponibilidadeRequest,
@@ -31,6 +33,7 @@ import {
   RepasseResponse,
   ResolverContestacaoRequest,
   ResponderContestacaoRequest,
+  VagaResponse,
 } from '@medescala/contracts';
 import { z } from 'zod';
 
@@ -264,6 +267,42 @@ export const api = {
 
   verificarMedico: (id: string): Promise<undefined> =>
     post(`/operador/medicos/${id}/verificar`, Nada),
+
+  // --- vaga aberta (F10) -------------------------------------------------------
+
+  /** DEC-166 — por padrão as compatíveis; `todas` mostra o resto, com o motivo. */
+  vagas: (todas: boolean): Promise<VagaResponse[]> =>
+    requisitar(`/vagas${todas ? '?todas=true' : ''}`, z.array(VagaResponse)),
+
+  candidatar: (plantaoId: string): Promise<VagaResponse> =>
+    post(`/plantoes/${plantaoId}/candidaturas`, VagaResponse),
+
+  retirarCandidatura: (candidaturaId: string): Promise<undefined> =>
+    post(`/candidaturas/${candidaturaId}/retirar`, Nada),
+
+  aceitarConviteDaVaga: (plantaoId: string): Promise<PlantaoResponse> =>
+    post(`/plantoes/${plantaoId}/convite/aceitar`, PlantaoResponse),
+
+  recusarConviteDaVaga: (plantaoId: string): Promise<undefined> =>
+    post(`/plantoes/${plantaoId}/convite/recusar`, Nada),
+
+  convidarParaVaga: (plantaoId: string, dados: ConvidarParaVagaRequest): Promise<PlantaoResponse> =>
+    post(`/plantoes/${plantaoId}/convites`, PlantaoResponse, ConvidarParaVagaRequest.parse(dados)),
+
+  filaDaVaga: (plantaoId: string): Promise<ConviteResponse[]> =>
+    requisitar(`/plantoes/${plantaoId}/convites`, z.array(ConviteResponse)),
+
+  encerrarConvitesDaVaga: (plantaoId: string): Promise<PlantaoResponse> =>
+    post(`/plantoes/${plantaoId}/convites/encerrar`, PlantaoResponse),
+
+  candidaturas: (plantaoId: string): Promise<CandidaturaResponse[]> =>
+    requisitar(`/plantoes/${plantaoId}/candidaturas`, z.array(CandidaturaResponse)),
+
+  aceitarCandidatura: (candidaturaId: string): Promise<PlantaoResponse> =>
+    post(`/candidaturas/${candidaturaId}/aceitar`, PlantaoResponse),
+
+  recusarCandidatura: (candidaturaId: string): Promise<undefined> =>
+    post(`/candidaturas/${candidaturaId}/recusar`, Nada),
 
   // --- execução do plantão (F16) ----------------------------------------------
 

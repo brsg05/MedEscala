@@ -8,7 +8,7 @@ import {
   type PlantaoResponse,
   type UsuarioAutenticado,
 } from '@medescala/contracts';
-import { api } from '@/api/cliente';
+import { api, ErroDaApi } from '@/api/cliente';
 import { useRecurso } from '@/hooks/useRecurso';
 import { ErroDeFormulario } from '@/componentes/Painel';
 import { ExecucaoDoPlantao } from '@/componentes/ExecucaoDoPlantao';
@@ -25,6 +25,7 @@ import { AvisoDePendencia } from './AvisoDePendencia';
 import { EscalarMedico } from './EscalarMedico';
 import { PublicarVaga } from './PublicarVaga';
 import { Trilha } from './Trilha';
+import { CandidaturasDaVaga, ConvidarParaVaga, FilaDaVaga } from './SelecaoDaVaga';
 
 const DIAS_DA_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'] as const;
 
@@ -53,7 +54,10 @@ function corDaEtiqueta(
 type Acao =
   | { tipo: 'publicar' }
   | { tipo: 'escalar'; plantao: PlantaoResponse }
-  | { tipo: 'trilha'; plantao: PlantaoResponse };
+  | { tipo: 'trilha'; plantao: PlantaoResponse }
+  | { tipo: 'convidar'; plantao: PlantaoResponse }
+  | { tipo: 'candidaturas'; plantao: PlantaoResponse }
+  | { tipo: 'fila'; plantao: PlantaoResponse };
 
 /**
  * F06 e F12 vistos pela chefia — a escala da instituição.
@@ -239,16 +243,45 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
                 )}
               </p>
 
-              <div className="mt-3 flex gap-2">
-                {p.status === 'ABERTO' && (
-                  <Button
-                    tamanho="pequeno"
-                    className="flex-1"
-                    disabled={pendente}
-                    onClick={() => setAcao({ tipo: 'escalar', plantao: p })}
-                  >
-                    Escalar médico
-                  </Button>
+              {p.selecao !== null && (
+                <SituacaoDaSelecao
+                  plantao={p}
+                  aoVerFila={() => setAcao({ tipo: 'fila', plantao: p })}
+                  aoMudar={plantoes.recarregar}
+                />
+              )}
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {(p.status === 'ABERTO' || p.status === 'EM_SELECAO') && (
+                  <>
+                    <Button
+                      tamanho="pequeno"
+                      className="flex-1"
+                      disabled={pendente}
+                      onClick={() => setAcao({ tipo: 'convidar', plantao: p })}
+                    >
+                      Convidar
+                    </Button>
+                    <Button
+                      variante="contorno"
+                      tamanho="pequeno"
+                      className="flex-1"
+                      disabled={pendente}
+                      onClick={() => setAcao({ tipo: 'escalar', plantao: p })}
+                    >
+                      Escalar direto
+                    </Button>
+                    {(p.selecao?.candidaturasPendentes ?? 0) > 0 && (
+                      <Button
+                        variante="contorno"
+                        tamanho="pequeno"
+                        className="flex-1"
+                        onClick={() => setAcao({ tipo: 'candidaturas', plantao: p })}
+                      >
+                        Candidaturas ({p.selecao?.candidaturasPendentes})
+                      </Button>
+                    )}
+                  </>
                 )}
                 <Button
                   variante="contorno"
@@ -295,6 +328,99 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
         />
       )}
       {acao?.tipo === 'trilha' && <Trilha plantao={acao.plantao} aoFechar={() => setAcao(null)} />}
+      {acao?.tipo === 'convidar' && (
+        <ConvidarParaVaga
+          plantao={acao.plantao}
+          aoFechar={() => setAcao(null)}
+          aoConvidar={aoConcluir}
+        />
+      )}
+      {acao?.tipo === 'candidaturas' && (
+        <CandidaturasDaVaga
+          plantao={acao.plantao}
+          aoFechar={() => {
+            setAcao(null);
+            plantoes.recarregar();
+          }}
+          aoEscolher={aoConcluir}
+        />
+      )}
+      {acao?.tipo === 'fila' && (
+        <FilaDaVaga plantao={acao.plantao} aoFechar={() => setAcao(null)} />
+      )}
+    </div>
+  );
+}
+
+/**
+ * F10 — como anda o preenchimento: quem está com o convite agora, e a saída
+ * para encerrar a fila sem preencher (a vaga volta a ABERTO).
+ */
+function SituacaoDaSelecao({
+  plantao,
+  aoVerFila,
+  aoMudar,
+}: {
+  plantao: PlantaoResponse;
+  aoVerFila: () => void;
+  aoMudar: () => void;
+}): React.JSX.Element | null {
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const daVez = plantao.selecao?.convidadoDaVez ?? null;
+
+  if (plantao.status !== 'EM_SELECAO') {
+    return null;
+  }
+
+  async function encerrar(): Promise<void> {
+    setErro(null);
+    setEnviando(true);
+    try {
+      await api.encerrarConvitesDaVaga(plantao.id);
+      aoMudar();
+    } catch (e) {
+      setErro(e instanceof ErroDaApi ? e.message : 'Não foi possível encerrar');
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border border-repasse/25 bg-tinta-3 px-3 py-2.5 text-xs">
+      <p className="text-gelo-2">
+        {daVez === null ? (
+          'Convites em andamento.'
+        ) : (
+          <>
+            Convite com <span className="font-medium text-gelo">{daVez.nome}</span>
+            {plantao.selecao?.prazoConviteAte != null && (
+              <>
+                {' '}
+                até <span className="dado">{formatarHora(plantao.selecao.prazoConviteAte)}</span>
+              </>
+            )}
+            .
+          </>
+        )}
+      </p>
+      <div className="mt-2 flex gap-3">
+        <button
+          type="button"
+          onClick={aoVerFila}
+          className="font-medium text-turno hover:underline"
+        >
+          Ver fila
+        </button>
+        <button
+          type="button"
+          onClick={() => void encerrar()}
+          disabled={enviando}
+          className="font-medium text-vazio hover:underline disabled:opacity-50"
+        >
+          Encerrar convites
+        </button>
+      </div>
+      {erro !== null && <p className="mt-2 text-vazio">{erro}</p>}
     </div>
   );
 }

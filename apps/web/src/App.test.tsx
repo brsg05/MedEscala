@@ -100,6 +100,7 @@ const PLANTAO = {
     crmUf: 'PE',
   },
   execucao: SEM_EXECUCAO,
+  selecao: null,
 };
 
 const VAGA_ABERTA = {
@@ -108,6 +109,7 @@ const VAGA_ABERTA = {
   status: 'ABERTO',
   titular: null,
   executante: null,
+  selecao: { candidaturasPendentes: 0, convidadoDaVez: null, prazoConviteAte: null },
 };
 
 function estrutura(status: 'ATIVA' | 'PENDENTE') {
@@ -117,7 +119,7 @@ function estrutura(status: 'ATIVA' | 'PENDENTE') {
       nome: 'Hospital Escola',
       cnpj: '12345678000190',
       status,
-      prazoConviteRepasseMinutos: 60,
+      prazoConviteMinutos: 60,
       prazoContestacaoHoras: 72,
     },
     unidades: [
@@ -293,7 +295,8 @@ describe('modo instituição (DEC-061)', () => {
     expect(await screen.findByText('Escala da instituição')).toBeDefined();
     expect(await screen.findByText('1 turno descoberto')).toBeDefined();
     expect(screen.getByText('Ninguém escalado')).toBeDefined();
-    expect(screen.getByRole('button', { name: 'Escalar médico' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Escalar direto' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Convidar' })).toBeDefined();
     // Navegação da instituição, não a do médico.
     expect(screen.getAllByRole('link', { name: 'Estrutura' }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('link', { name: 'Disponível' })).toBeNull();
@@ -630,5 +633,143 @@ describe('execução do plantão (F16)', () => {
     expect(await screen.findByText('Saída registrada na portaria às 15h')).toBeDefined();
     expect(screen.getByLabelText('Sua versão')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Enviar resposta' })).toBeDefined();
+  });
+});
+
+describe('vaga aberta (F10)', () => {
+  const COLEGA = {
+    id: '99999999-9999-4999-8999-999999999999',
+    nome: 'Bruno Lacerda',
+    crm: '70002',
+    crmUf: 'PE',
+  };
+
+  it('o médico vê as vagas compatíveis em Disponível e se candidata (DEC-166, DEC-168)', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/disponibilidades': () => json(200, []),
+      '/medicos/me': () =>
+        json(200, {
+          id: PLANTAO.titular.id,
+          nome: 'Ana Medeiros',
+          crm: '12345',
+          crmUf: 'PE',
+          especialidade: 'Clínica Médica',
+          verificado: true,
+          cnpj: null,
+          regimeTributario: null,
+          inscricaoMunicipal: null,
+        }),
+      '/vagas': () =>
+        json(200, [
+          { plantao: VAGA_ABERTA, compativel: true, motivo: null, minhaCandidatura: null },
+        ]),
+      [`/plantoes/${VAGA_ABERTA.id}/candidaturas`]: () =>
+        json(201, {
+          plantao: VAGA_ABERTA,
+          compativel: true,
+          motivo: null,
+          minhaCandidatura: { id: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', status: 'PENDENTE' },
+        }),
+    });
+    window.history.replaceState({}, '', '/disponibilidade');
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Candidatar-me' }));
+
+    await waitFor(() => {
+      expect(
+        vi
+          .mocked(fetch)
+          .mock.calls.some(([url]) =>
+            String(url).includes(`/plantoes/${VAGA_ABERTA.id}/candidaturas`),
+          ),
+      ).toBe(true);
+    });
+    // "Compatíveis" é o padrão; a outra opção está a um toque.
+    expect(screen.getByRole('radio', { name: 'Compatíveis' }).getAttribute('aria-checked')).toBe(
+      'true',
+    );
+    expect(screen.getByRole('radio', { name: 'Todas' })).toBeDefined();
+  });
+
+  it('com "Todas", a vaga incompatível mostra o motivo no lugar do botão (DEC-167)', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/disponibilidades': () => json(200, []),
+      '/vagas?todas=true': () =>
+        json(200, [
+          {
+            plantao: { ...VAGA_ABERTA, especialidadeExigida: 'Pediatria' },
+            compativel: false,
+            motivo: 'Exige Pediatria',
+            minhaCandidatura: null,
+          },
+        ]),
+      '/vagas': () => json(200, []),
+    });
+    window.history.replaceState({}, '', '/disponibilidade');
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('radio', { name: 'Todas' }));
+
+    expect(await screen.findByText('Exige Pediatria')).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Candidatar-me' })).toBeNull();
+  });
+
+  it('o convite da instituição para uma vaga aparece em Decisões e se aceita', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/decisoes': () =>
+        json(200, [
+          {
+            tipo: 'ACEITAR_VAGA',
+            plantao: VAGA_ABERTA,
+            prazoConviteAte: new Date(Date.now() + 3_600_000).toISOString(),
+            origemConvite: 'INDICACAO',
+          },
+        ]),
+      [`/plantoes/${VAGA_ABERTA.id}/convite/aceitar`]: () =>
+        json(201, { ...VAGA_ABERTA, status: 'CONFIRMADO', selecao: null }),
+    });
+    window.history.replaceState({}, '', '/decisoes');
+    render(<App />);
+
+    expect(await screen.findByText('Convite para uma vaga')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Aceitar' }));
+
+    await waitFor(() => {
+      expect(
+        vi
+          .mocked(fetch)
+          .mock.calls.some(([url]) =>
+            String(url).includes(`/plantoes/${VAGA_ABERTA.id}/convite/aceitar`),
+          ),
+      ).toBe(true);
+    });
+  });
+
+  it('a chefia vê quem está com o convite e quantos se candidataram', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, CHEFIA),
+      [`/instituicoes/${HOSPITAL}/estrutura`]: () => json(200, estrutura('ATIVA')),
+      [`/instituicoes/${HOSPITAL}/plantoes`]: () =>
+        json(200, [
+          {
+            ...VAGA_ABERTA,
+            status: 'EM_SELECAO',
+            selecao: {
+              candidaturasPendentes: 2,
+              convidadoDaVez: COLEGA,
+              prazoConviteAte: new Date(Date.now() + 3_600_000).toISOString(),
+            },
+          },
+        ]),
+    });
+    render(<App />);
+
+    expect(await screen.findByText('Bruno Lacerda')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Candidaturas (2)' })).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Encerrar convites' })).toBeDefined();
   });
 });

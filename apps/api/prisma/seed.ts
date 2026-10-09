@@ -348,8 +348,9 @@ async function semearDemonstracao(unidadeId: string): Promise<void> {
       status: 'AGUARDANDO_APROVACAO',
     },
   });
-  await prisma.conviteRepasse.create({
+  await prisma.convite.create({
     data: {
+      plantaoId: emRepasse.id,
       repasseId: repasse.id,
       medicoId: bruno.id,
       ordem: 1,

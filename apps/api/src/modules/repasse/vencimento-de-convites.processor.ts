@@ -8,7 +8,8 @@ import {
 } from './fila-de-convites.service';
 
 /**
- * Worker do BullMQ (ADR-027): quando o prazo de um convite vence, avança a fila.
+ * Worker do BullMQ (ADR-027): quando o prazo de um convite vence, avança a fila
+ * — do repasse ou da vaga (DEC-164).
  *
  * Roda no mesmo processo da api (DEC-100). Toda a regra está em `avancar`, que é
  * idempotente — se este job rodar duas vezes, ou depois de uma leitura já ter
@@ -23,14 +24,19 @@ export class VencimentoDeConvitesProcessor extends WorkerHost {
   }
 
   async process(job: Job<JobDeVencimento>): Promise<void> {
-    await this.fila.avancar(job.data.repasseId);
+    // Fila de repasse ou de vaga (DEC-164).
+    if (job.data.repasseId !== undefined) {
+      await this.fila.avancar(job.data.repasseId);
+    } else if (job.data.plantaoId !== undefined) {
+      await this.fila.avancarVaga(job.data.plantaoId);
+    }
   }
 
   @OnWorkerEvent('failed')
   aoFalhar(job: Job<JobDeVencimento> | undefined, erro: Error): void {
     // Não é perda de estado: a próxima leitura avança a fila (DEC-097).
     this.logger.warn(
-      `Job de vencimento falhou (repasse ${job?.data.repasseId ?? '?'}): ${erro.message}`,
+      `Job de vencimento falhou (${job?.data.repasseId ?? job?.data.plantaoId ?? '?'}): ${erro.message}`,
     );
   }
 

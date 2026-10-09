@@ -74,7 +74,11 @@ export function Decisoes({ recorte }: { recorte: Recorte }): React.JSX.Element {
 
       {!fila.carregando && atual !== undefined && (
         <>
-          <CartaoDeDecisao decisao={atual} aoResolver={proxima} />
+          {atual.tipo === 'ACEITAR_VAGA' ? (
+            <CartaoDeConviteDaVaga decisao={atual} aoResolver={proxima} />
+          ) : (
+            <CartaoDeDecisao decisao={atual} aoResolver={proxima} />
+          )}
 
           {decisoes.length > 1 && (
             <div
@@ -83,7 +87,7 @@ export function Decisoes({ recorte }: { recorte: Recorte }): React.JSX.Element {
             >
               {decisoes.map((d, i) => (
                 <span
-                  key={d.repasse.id}
+                  key={`${d.tipo}-${d.plantao.id}`}
                   aria-hidden="true"
                   className={`h-1.5 rounded-full transition-all ${
                     i === indice ? 'w-5 bg-turno' : 'w-1.5 bg-borda'
@@ -107,11 +111,110 @@ export function Decisoes({ recorte }: { recorte: Recorte }): React.JSX.Element {
   );
 }
 
+type DecisaoDeRepasse = Exclude<DecisaoResponse, { tipo: 'ACEITAR_VAGA' }>;
+type ConviteDaVaga = Extract<DecisaoResponse, { tipo: 'ACEITAR_VAGA' }>;
+
+/**
+ * F10 — convite da instituição para uma vaga aberta (DEC-135). Sem cadeia de
+ * três partes: quem convidou é a própria instituição, então o aceite confirma.
+ */
+function CartaoDeConviteDaVaga({
+  decisao,
+  aoResolver,
+}: {
+  decisao: ConviteDaVaga;
+  aoResolver: () => void;
+}): React.JSX.Element {
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+  const { plantao } = decisao;
+
+  async function executar(acao: () => Promise<unknown>): Promise<void> {
+    setErro(null);
+    setEnviando(true);
+    try {
+      await acao();
+      aoResolver();
+    } catch (e) {
+      setErro(e instanceof ErroDaApi ? e.message : 'Não foi possível concluir');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <article className="rounded-xl border border-borda bg-tinta-2 p-5">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="sinal">Convite para uma vaga</p>
+        <p className="dado text-xs font-semibold text-espera">
+          responda até {formatarHora(decisao.prazoConviteAte)}
+        </p>
+      </div>
+
+      <h2 className="mt-2 text-lg font-semibold text-gelo">{plantao.setor.nome}</h2>
+      <p className="text-sm text-gelo-3">
+        {plantao.setor.unidade} · {plantao.setor.instituicao}
+      </p>
+
+      <dl className="mt-4 space-y-1.5 rounded-lg bg-tinta-3 p-3 text-sm">
+        <div className="flex justify-between gap-3">
+          <dt className="text-gelo-3">Início</dt>
+          <dd className="dado text-right text-gelo">{formatarDataHora(plantao.inicio)}</dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-gelo-3">Fim</dt>
+          <dd className="dado text-right text-gelo">{formatarDataHora(plantao.fim)}</dd>
+        </div>
+        <div className="flex justify-between gap-3">
+          <dt className="text-gelo-3">Valor</dt>
+          <dd className="dado text-right font-semibold text-gelo">
+            {formatarCentavos(plantao.valorCentavos)}
+          </dd>
+        </div>
+      </dl>
+
+      <p className="mt-4 text-xs leading-relaxed text-gelo-3">
+        {decisao.origemConvite === 'MATCHING'
+          ? 'Você foi chamado porque declarou disponibilidade para este horário.'
+          : 'A instituição indicou você para esta vaga.'}{' '}
+        Aceitando, o plantão entra na sua escala na hora.
+      </p>
+
+      {erro !== null && (
+        <p
+          role="alert"
+          className="mt-4 rounded-lg border border-vazio/30 bg-vazio-fundo px-3 py-2.5 text-sm text-vazio"
+        >
+          {erro}
+        </p>
+      )}
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <Button
+          variante="perigo"
+          tamanho="grande"
+          disabled={enviando}
+          onClick={() => void executar(() => api.recusarConviteDaVaga(plantao.id))}
+        >
+          Recusar
+        </Button>
+        <Button
+          tamanho="grande"
+          disabled={enviando}
+          onClick={() => void executar(() => api.aceitarConviteDaVaga(plantao.id))}
+        >
+          {enviando ? '…' : 'Aceitar'}
+        </Button>
+      </div>
+    </article>
+  );
+}
+
 function CartaoDeDecisao({
   decisao,
   aoResolver,
 }: {
-  decisao: DecisaoResponse;
+  decisao: DecisaoDeRepasse;
   aoResolver: () => void;
 }): React.JSX.Element {
   const [erro, setErro] = useState<string | null>(null);

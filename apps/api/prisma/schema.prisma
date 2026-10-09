@@ -81,9 +81,9 @@ model Instituicao {
   verificadaPorId String?           @map("verificada_por_id") @db.Uuid
 
   antecedenciaMinimaRepasseHoras Int @default(24) @map("antecedencia_minima_repasse_horas")
-  validadeConviteHoras           Int @default(12) @map("validade_convite_horas")
-  /// DEC-090 — quanto tempo cada pessoa da fila de substitutos tem para responder.
-  prazoConviteRepasseMinutos     Int @default(60) @map("prazo_convite_repasse_minutos")
+  /// DEC-090, DEC-165 — quanto tempo cada convidado da fila tem para responder,
+  /// em repasse ou em vaga.
+  prazoConviteMinutos            Int @default(60) @map("prazo_convite_minutos")
   /// DEC-132 — até quando a instituição contesta um check-out. Padrão 72h.
   prazoContestacaoHoras          Int @default(72) @map("prazo_contestacao_horas")
 
@@ -264,7 +264,8 @@ model Medico {
   plantoesExecutante  Plantao[]               @relation("PlantaoExecutante")
   repassesSolicitados Repasse[]               @relation("RepasseTitular")
   repassesRecebidos   Repasse[]               @relation("RepasseSubstituto")
-  convites            ConviteRepasse[]
+  convites            Convite[]
+  candidaturas        Candidatura[]
 
   @@unique([crm, crmUf])
   @@index([verificado])
@@ -382,7 +383,9 @@ model Plantao {
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  contestacao Contestacao?
+  contestacao  Contestacao?
+  convites     Convite[]
+  candidaturas Candidatura[]
 
   escala     Escala    @relation(fields: [escalaId], references: [id], onDelete: Cascade)
   titular    Medico?   @relation("PlantaoTitular", fields: [medicoTitularId], references: [id])
@@ -423,10 +426,10 @@ model Repasse {
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
 
-  plantao    Plantao          @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
-  titular    Medico           @relation("RepasseTitular", fields: [medicoTitularId], references: [id])
-  substituto Medico?          @relation("RepasseSubstituto", fields: [medicoSubstitutoId], references: [id])
-  convites   ConviteRepasse[]
+  plantao    Plantao   @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
+  titular    Medico    @relation("RepasseTitular", fields: [medicoTitularId], references: [id])
+  substituto Medico?   @relation("RepasseSubstituto", fields: [medicoSubstitutoId], references: [id])
+  convites   Convite[]
 
   @@index([plantaoId])
   @@index([status])
@@ -453,15 +456,18 @@ enum OrigemConvite {
   MATCHING
 }
 
-/// Fila de convites de um repasse.
+/// Fila de convites — de um repasse ou de uma vaga aberta (DEC-164).
 ///
 /// A fila é a verdade (DEC-097): o prazo de cada convite mora aqui, e o job no
 /// Redis só serve para avançar a fila na hora certa. Qualquer leitura trata como
 /// vencido o convite ATIVO com prazo passado — se o Redis perder o job, a fila
 /// anda no próximo acesso em vez de travar.
-model ConviteRepasse {
+model Convite {
   id        String        @id @default(uuid()) @db.Uuid
-  repasseId String        @map("repasse_id") @db.Uuid
+  /// O plantão a cobrir. Com `repasseId`, a fila é de um repasse (DEC-087); sem,
+  /// é a fila da vaga aberta (F10, DEC-164).
+  plantaoId String        @map("plantao_id") @db.Uuid
+  repasseId String?       @map("repasse_id") @db.Uuid
   medicoId  String        @map("medico_id") @db.Uuid
   /// Posição global na fila. Lotes do matching continuam a numeração.
   ordem     Int
@@ -474,15 +480,18 @@ model ConviteRepasse {
 
   criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
 
-  repasse Repasse @relation(fields: [repasseId], references: [id], onDelete: Cascade)
-  medico  Medico  @relation(fields: [medicoId], references: [id])
+  plantao Plantao  @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
+  repasse Repasse? @relation(fields: [repasseId], references: [id], onDelete: Cascade)
+  medico  Medico   @relation(fields: [medicoId], references: [id])
 
-  /// Ninguém é convidado duas vezes para o mesmo repasse.
-  @@unique([repasseId, medicoId])
-  @@unique([repasseId, ordem])
+  // "Ninguém é convidado duas vezes para a mesma fila" e "uma posição por fila"
+  // são índices UNIQUE NULLS NOT DISTINCT em `supabase/policies/006`: a fila da
+  // vaga tem `repasse_id` nulo, e um UNIQUE comum trataria cada nulo como
+  // diferente — o Prisma não declara essa variante.
+  @@index([plantaoId, repasseId])
   @@index([medicoId, status])
   @@index([status, prazoAte])
-  @@map("convite_repasse")
+  @@map("convite")
 }
 
 // --- F22 — notificações in-app (DEC-121, DEC-127 a DEC-129) ------------------
@@ -503,6 +512,12 @@ enum TipoNotificacao {
   REPASSE_APROVADO
   REPASSE_RECUSADO
   REPASSE_CANCELADO
+  // vaga aberta (F10)
+  CANDIDATURA_RECEBIDA
+  CANDIDATURA_ACEITA
+  CANDIDATURA_RECUSADA
+  CANDIDATURA_ENCERRADA
+  VAGA_PREENCHIDA
   // escala e execução (F16)
   MEDICO_ESCALADO
   CHECKIN_LIBERADO
@@ -571,4 +586,36 @@ model Contestacao {
   plantao Plantao @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
 
   @@map("contestacao")
+}
+
+// --- F10 — candidatura a vaga aberta (DEC-135, DEC-166) ----------------------
+
+enum StatusCandidatura {
+  PENDENTE
+  /// A chefia escolheu este médico; a vaga foi preenchida por ele.
+  ACEITA
+  RECUSADA
+  /// O próprio médico desistiu.
+  RETIRADA
+  /// A vaga foi preenchida por outro caminho, ou começou.
+  ENCERRADA
+}
+
+/// O médico se oferece para uma vaga aberta; a chefia escolhe (DEC-135).
+model Candidatura {
+  id        String            @id @default(uuid()) @db.Uuid
+  plantaoId String            @map("plantao_id") @db.Uuid
+  medicoId  String            @map("medico_id") @db.Uuid
+  status    StatusCandidatura @default(PENDENTE)
+
+  criadaEm     DateTime  @default(now()) @map("criada_em") @db.Timestamptz(6)
+  respondidaEm DateTime? @map("respondida_em") @db.Timestamptz(6)
+
+  plantao Plantao @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
+  medico  Medico  @relation(fields: [medicoId], references: [id])
+
+  /// Uma por médico e vaga; quem retirou e quer de novo reativa a mesma.
+  @@unique([plantaoId, medicoId])
+  @@index([plantaoId, status])
+  @@map("candidatura")
 }

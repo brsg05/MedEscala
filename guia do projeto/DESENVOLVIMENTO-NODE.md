@@ -57,7 +57,7 @@ a tese — que o repasse pode ser rastreável, aprovado e formalizado.
 | F13 | Gerar termo contratual | PDF gerado; assinatura eletrônica simulada (aceite + timestamp + hash) |
 | F16 | Confirmar execução do plantão | |
 | F18 | Avaliação bidirecional | |
-| F22 | Notificações | In-app + e-mail; sem WhatsApp |
+| F22 | Notificações | In-app (feito, DEC-121); e-mail quando houver provedor; sem WhatsApp |
 | F23 | Controle de acesso e auditoria | Log append-only de eventos de domínio |
 
 ### 3.2 Fora do MVP (simulado ou adiado)
@@ -563,6 +563,19 @@ GET    /plantoes/:id/contrato            F13  (PDF)
 GET    /plantoes/:id/documento-fiscal    F14  (rascunho SIMULADO)
 GET    /plantoes/:id/auditoria           F23
 
+GET    /vagas?todas=                     F10  (compatíveis por padrão — DEC-166)
+POST   /plantoes/:id/candidaturas             (médico se candidata)
+POST   /candidaturas/:id/retirar
+POST   /plantoes/:id/convite/aceitar          (convidado da vez da vaga; confirma direto)
+POST   /plantoes/:id/convite/recusar
+POST   /plantoes/:id/convites                 (instituição convida pela fila — DEC-164)
+GET    /plantoes/:id/convites
+POST   /plantoes/:id/convites/encerrar
+GET    /plantoes/:id/candidaturas
+POST   /candidaturas/:id/aceitar              (instituição escolhe; escala o médico)
+POST   /candidaturas/:id/recusar
+POST   /plantoes/:id/atribuir                 (escala direta — DEC-052; fecha fila e candidaturas)
+
 GET    /notificacoes                     F22  (30 mais recentes + não lidas; polling — DEC-127)
 POST   /notificacoes/:id/lida
 POST   /notificacoes/lidas
@@ -603,20 +616,25 @@ Sprints de duas semanas. Todo item tem critério de aceite **verificável por te
 - [x] Cadastro de médico e dados fiscais (F01, F02 — parte fiscal)
   → *verificado:* CRM fora de formato é rejeitado pelo schema Zod; médico não verificado
     não entra na escala (`MEDICO_NAO_VERIFICADO`, RN02)
-- [x] Unidades e setores (F03). Instituição em si vem do seed
+- [x] Unidades e setores (F03). A instituição se cadastra (cadastro aberto, DEC-059) e é
+  conferida pelo operador (DEC-063)
 - [x] Janelas de disponibilidade (F04) e agenda unificada (F05)
   → *verificado:* teste que escala o mesmo médico em horários sobrepostos recebe
     `SOBREPOSICAO_DE_AGENDA` (RN03); e um segundo teste confirma que turnos que apenas
     **encostam** são aceitos — a passagem de plantão é instantânea
 - [ ] Documentos comprobatórios e dados bancários — Sprint 4 (RNF07)
 
-### Sprint 2 — Vagas e matching  ⏳ em parte
+### Sprint 2 — Vagas e matching  ✅ concluído (matching no formato do MVP)
 - [x] Publicação de vaga (F06)
-- [ ] Matching e ordenação (F08, F09)
-  → *verificar:* com massa fixa, a ordem é determinística e quem não atende requisito
-     obrigatório não aparece
-- [ ] Candidatura, aceite, recusa, expiração (F10)
-  → *verificar:* convite não respondido no prazo libera a vaga
+- [x] Matching e ordenação (F08, F09) — critérios em sequência, sem pesos (DEC-136):
+  vínculo, plantões cumpridos, taxa de resposta, nome e id
+  → *verificado:* rotações da mesma massa produzem a mesma ordem (teste de unidade); só
+    entra quem declarou disponibilidade, está verificado, tem a especialidade e agenda livre
+    (DEC-062); e2e mostra quem deixou convite vencer descendo, mesmo antes no alfabeto
+- [x] Convite pela fila e candidatura, aceite, recusa, expiração (F10, DEC-135, DEC-164)
+  → *verificado:* convite não respondido no prazo passa ao próximo; fila esgotada devolve a
+    vaga a ABERTO; preencher por um caminho fecha a fila e as candidaturas na mesma transação
+- [ ] Raio geográfico e proximidade — adiados (DEC-137)
 
 ### Sprint 3 — Repasse (núcleo do projeto)  ✅ concluído
 - [x] Pedido de repasse (F07), com antecedência mínima configurável (ADR-022)
@@ -637,7 +655,11 @@ Sprints de duas semanas. Todo item tem critério de aceite **verificável por te
 - [ ] Contrato em PDF (F13)
 - [ ] Rascunho fiscal com retenções (F14, simulado)
   → *verificar:* IRRF 1,5% e demais retenções conferem com cálculo manual
-- [ ] Confirmação de execução (F16) e avaliação bidirecional (F18)
+- [x] Confirmação de execução (F16) — check-in, check-out, contestação (DEC-130 a DEC-134)
+  → *verificado:* a janela de check-in abre 30 min antes; check-out abre prazo de 72h;
+    plantão sem confirmação é decidido pela instituição; EM_EXECUCAO sem check-in é recusado
+    pelo banco
+- [ ] Avaliação bidirecional (F18) — **adiada**: não há consenso (DEC-123)
 - [ ] Máquina de estados financeira com gateway fake (F15, F17)
 
 ### Sprint 5 — Integração, demo e relatório

@@ -53,8 +53,17 @@ const CHECAGENS: readonly Checagem[] = [
     sql: `SELECT 1 FROM pg_constraint WHERE conname = 'repasse_recusa_justificada'`,
   },
   {
-    nome: 'no máximo um convidado da vez por repasse',
-    sql: `SELECT 1 FROM pg_indexes WHERE indexname = 'convite_um_ativo_por_repasse'`,
+    nome: 'no máximo um convidado da vez por plantão',
+    sql: `SELECT 1 FROM pg_indexes WHERE indexname = 'convite_um_ativo_por_plantao'`,
+  },
+  {
+    nome: 'ninguém convidado duas vezes na mesma fila (NULLS NOT DISTINCT)',
+    sql: `SELECT 1 FROM pg_indexes WHERE indexname = 'convite_um_por_medico_na_fila'
+          AND indexdef LIKE '%NULLS NOT DISTINCT%'`,
+  },
+  {
+    nome: 'candidatura respondida tem data (F10)',
+    sql: `SELECT 1 FROM pg_constraint WHERE conname = 'candidatura_respondida_tem_data'`,
   },
   {
     nome: 'convite ativo sempre tem prazo',
@@ -83,7 +92,7 @@ const CHECAGENS: readonly Checagem[] = [
           WHERE n.nspname = 'public'
             AND c.relname IN ('usuario','instituicao','perfil_acesso','refresh_token','evento_auditoria',
                               'medico','janela_disponibilidade','unidade','setor','escala','plantao','repasse',
-                              'convite_repasse','notificacao','contestacao')
+                              'convite','notificacao','contestacao','candidatura')
             AND c.relrowsecurity = false`,
   },
 ];

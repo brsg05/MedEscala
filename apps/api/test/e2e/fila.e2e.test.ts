@@ -192,7 +192,7 @@ describe('fila de convites (e2e)', () => {
       const repasse = await abrir(plantaoId, [subId, terId]);
 
       // Simula o pior caso: o prazo passou e o Redis nunca avisou.
-      await prisma.conviteRepasse.updateMany({
+      await prisma.convite.updateMany({
         where: { repasseId: repasse.id, status: 'ATIVO' },
         data: { prazoAte: new Date(Date.now() - 60_000) },
       });
@@ -221,7 +221,7 @@ describe('fila de convites (e2e)', () => {
       const { plantaoId } = await plantaoDoTitular();
       const repasse = await abrir(plantaoId, [await idDoMedico(SUBSTITUTO)]);
 
-      const convite = await prisma.conviteRepasse.findFirstOrThrow({
+      const convite = await prisma.convite.findFirstOrThrow({
         where: { repasseId: repasse.id, status: 'ATIVO' },
       });
 

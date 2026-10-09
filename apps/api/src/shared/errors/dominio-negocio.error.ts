@@ -308,3 +308,31 @@ export class ContestacaoJaRespondidaError extends ErroDominio {
     super('Esta contestação já foi respondida');
   }
 }
+
+// --- vaga aberta (F10, DEC-135) ------------------------------------------------
+
+/** A vaga já foi preenchida, cancelada, ou o plantão já começou. */
+export class VagaNaoAbertaError extends ErroDominio {
+  readonly codigo = 'VAGA_NAO_ABERTA';
+
+  constructor(motivo = 'Esta vaga não está mais aberta') {
+    super(motivo);
+  }
+}
+
+export class CandidaturaNaoEncontradaError extends ErroDominio {
+  readonly codigo = 'CANDIDATURA_NAO_ENCONTRADA';
+
+  constructor() {
+    super('Candidatura não encontrada');
+  }
+}
+
+/** A chefia já disse não a esta candidatura; insistir não muda a resposta. */
+export class CandidaturaJaRespondidaError extends ErroDominio {
+  readonly codigo = 'CANDIDATURA_JA_RESPONDIDA';
+
+  constructor() {
+    super('Esta candidatura já foi respondida pela instituição');
+  }
+}

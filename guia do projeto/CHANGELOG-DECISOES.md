@@ -259,3 +259,27 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | DEC-161 | Médico que não é o executante recebe **404** nas ações de execução | Claude | ADR-026 | ADR-026 |
 | DEC-162 | Seed: a Ana ganha um plantão **cumprido anteontem** (ainda contestável) e um **sem confirmação ontem** | Claude | A F16 precisa ter o que mostrar na demonstração | — |
 | DEC-163 | Testes do web com **relógio fixo** (só `Date`) | Claude | Os botões dependem da hora; sem isto o mesmo teste mudaria conforme a hora em que roda | — |
+
+## 2026-10-09 — Sprint 2: F10 e F09
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-164 | **Uma fila só** para repasse e vaga: o convite aponta para o plantão, e o repasse fica opcional (sem repasse = convite de vaga) | Breno, sobre recomendação | Um motor só — prazo, Redis, matching e varredura já testados | DEC-135 |
+| DEC-165 | Convite de vaga usa **o mesmo prazo** configurável da fila; o campo `validadeConviteHoras`, nunca usado, é removido | Breno, sobre recomendação | Um ajuste só na tela Estrutura | DEC-090 |
+| DEC-166 | O médico vê **por padrão as vagas compatíveis**, e **pode ver todas** se quiser | Breno | — | DEC-135 |
+| DEC-167 | "Todas" = todas as vagas abertas de instituições ativas; **candidatar-se continua exigindo RN02 e RN03** — nas incompatíveis o botão fica bloqueado, com o motivo | Claude | Leitura da DEC-166: ver não é poder se candidatar | RN02, RN03 |
+| DEC-168 | As vagas ficam **dentro da aba Disponível** | Breno, sobre recomendação | Declarar disponibilidade e procurar plantão são a mesma intenção; a barra continua com 5 abas | — |
+| DEC-169 | Na fila da vaga, expiração e recusa de convite **não avisam a chefia um a um**; ela é avisada quando a fila acaba sem aceite ou a vaga é preenchida | Claude | Seria ruído para quem cuida da escala inteira; no repasse o titular continua avisado de cada uma (DEC-141) | — |
+| DEC-170 | O motor da fila continua no módulo de repasse; o módulo de vagas depende dele | Claude | Separar o motor exigiria injeção cruzada entre módulos para um ganho só de nome | DEC-164 |
+| DEC-171 | Módulo **`vagas`** é dono dos três caminhos que preenchem uma vaga (aceite do convite, candidatura escolhida, escala direta); a rota `POST /plantoes/:id/atribuir` mudou de módulo, **não de caminho**. A atribuição aceita um callback que roda na mesma transação | Claude | Preencher por um caminho fecha os outros dois atomicamente | — |
+| DEC-172 | `prazoConviteRepasseMinutos` renomeado para **`prazoConviteMinutos`** (API e banco) | Claude | O prazo passou a valer para a vaga também (DEC-165) | — |
+| DEC-173 | Unicidade da fila por **`UNIQUE NULLS NOT DISTINCT`** (plantão, repasse, médico); "um convidado da vez" passa a valer **por plantão** | Claude | Na fila da vaga o repasse é nulo; um UNIQUE comum trataria cada nulo como diferente | DEC-164 |
+| DEC-174 | Quem aceita o convite da vaga **não** recebe "você foi escalado"; quem tem a candidatura escolhida recebe um aviso próprio | Claude | Um seria eco da própria ação; o outro diz mais que o genérico | — |
+| DEC-175 | Candidatura **recusada é final**; **retirada pode voltar** | Claude | A resposta da chefia está dada; o médico pode mudar de ideia | — |
+| DEC-176 | **Admin e chefia** gerem a vaga (convidar, escolher, encerrar, escalar), como já publicavam e escalavam; aprovação de repasse e execução continuam só da chefia | Claude | Mesma regra da publicação de vaga | DEC-155 |
+| DEC-177 | Busca por CRM aberta também a **admin e chefia** | Claude | Para apontar um médico na fila da vaga (DEC-091) | DEC-091 |
+| DEC-178 | Taxa de resposta: janela de **90 dias**; **sem histórico vale 1**; **recusar conta como resposta** | Claude | O que trava a fila de alguém é deixar vencer, não dizer não | DEC-136 |
+| DEC-179 | A lista de vagas do médico traz **até 100 vagas futuras**, só de instituições ativas | Claude | — | DEC-166 |
+| DEC-180 | Como anda a seleção (convidado da vez, candidaturas pendentes) **só aparece na escala da instituição** | Claude | Um convidado não precisa saber quem mais foi chamado (DEC-108) | DEC-108 |
+| DEC-181 | No cartão da vaga: **Convidar**, **Escalar direto** e **Candidaturas (n)**; a seleção fica no cartão da escala, não em Decisões | Claude | É ali que a chefia olha a vaga descoberta | — |
+| DEC-182 | Vaga cujo plantão começa com a fila correndo **volta a ABERTO** sem aviso extra | Claude | O turno descoberto já aparece em vermelho na escala | — |

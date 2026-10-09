@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import type { PlantaoResponse } from '@medescala/contracts';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
@@ -33,15 +34,30 @@ export class AtribuicaoService {
     private readonly notificacoes: NotificacaoService,
   ) {}
 
+  /**
+   * @param opcoes.instituicoesDoAtor — quando quem escala é a instituição, as
+   *   instituições em que ela pode agir. Ausente quando é o próprio médico
+   *   aceitando o convite da vaga (F10): ali o escopo já foi dado pelo convite.
+   * @param opcoes.dentroDaTransacao — o que precisa acontecer junto, ou não
+   *   acontecer: fechar a fila e as candidaturas da vaga (F10). Roda na mesma
+   *   transação, sem que este módulo precise conhecer convite nem candidatura.
+   */
   async escalarMedico(
     plantaoId: string,
     medicoId: string,
     atorId: string,
-    instituicoesDoAtor: readonly string[],
+    opcoes: {
+      instituicoesDoAtor?: readonly string[];
+      avisarMedico?: boolean;
+      dentroDaTransacao?: (tx: Prisma.TransactionClient) => Promise<void>;
+    } = {},
   ): Promise<PlantaoResponse> {
     const plantao = await this.escala.buscarPlantao(plantaoId);
 
-    if (!instituicoesDoAtor.includes(plantao.escala.setor.unidade.instituicaoId)) {
+    if (
+      opcoes.instituicoesDoAtor !== undefined &&
+      !opcoes.instituicoesDoAtor.includes(plantao.escala.setor.unidade.instituicaoId)
+    ) {
       throw new ForaDoEscopoDaInstituicaoError();
     }
 
@@ -77,6 +93,16 @@ export class AtribuicaoService {
     await this.escala.exigirAgendaLivre(medicoId, { inicio: plantao.inicio, fim: plantao.fim });
 
     const atualizado = await this.prisma.$transaction(async (tx) => {
+      // Só a partir do estado lido: se outra ação preencheu a vaga no meio do
+      // caminho, esta não escreve por cima.
+      const { count } = await tx.plantao.updateMany({
+        where: { id: plantaoId, status: plantao.status },
+        data: { status: plantao.status },
+      });
+      if (count === 0) {
+        throw new TransicaoInvalidaError('Plantao', plantao.status, 'CONFIRMADO');
+      }
+
       const p = await tx.plantao.update({
         where: { id: plantaoId },
         data: {
@@ -105,6 +131,12 @@ export class AtribuicaoService {
         },
         tx,
       );
+
+      await opcoes.dentroDaTransacao?.(tx);
+
+      if (opcoes.avisarMedico === false) {
+        return p;
+      }
 
       await this.notificacoes.notificar(tx, [{ medicoId }], {
         tipo: 'MEDICO_ESCALADO',

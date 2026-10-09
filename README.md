@@ -63,23 +63,27 @@ de novo atualiza as datas.
 ### Roteiro de demonstração
 
 1. **Chefia monta a escala.** Entre como `chefia@` → Escala → navegue +3 dias →
-   **Publicar vaga** → **Escalar médico**. Só o Bruno aparece: ele é o único que declarou
+   **Publicar vaga** → **Escalar direto**. Só o Bruno aparece: ele é o único que declarou
    disponibilidade. Abra a **Trilha** do plantão.
-2. **Médica pede repasse.** Entre como `medico@` → Escala → navegue até um plantão
+2. **Vaga aberta (F10).** Ainda como `chefia@`, no cartão da vaga: **Convidar** (indique
+   ou deixe o matching chamar) ou espere candidaturas. Como `medico@` → **Disponível** →
+   _Vagas abertas_: **Candidatar-me** (o filtro "Todas" mostra também as incompatíveis, com
+   o motivo). De volta à chefia, **Candidaturas** → **Escolher**.
+3. **Médica pede repasse.** Entre como `medico@` → Escala → navegue até um plantão
    confirmado → **Pedir repasse**. Monte a fila: **Adicionar** o Bruno (ofereceu-se para o
    horário) e/ou **apontar por CRM** (`70003`/PE). Os convites saem um por vez, cada um com
    o prazo da instituição (padrão 1h, em **Estrutura**). Sem ninguém na fila, o convite é
    aberto e o matching chama os candidatos. Entre como `substituto@` → **Decisões** →
    aceite ou recuse; em **Repasses**, a titular vê quem tem o convite agora e a fila
    completa.
-3. **Chefia decide.** Volte como `chefia@` → **Decisões** → aprove o repasse da UTI Adulto
+4. **Chefia decide.** Volte como `chefia@` → **Decisões** → aprove o repasse da UTI Adulto
    (já aceito pelo Bruno). A cadeia de três partes fecha e a escala oficial muda.
-4. **Execução (F16).** Como `medico@`, no plantão de hoje: **Fazer check-in** (abre 30 min
+5. **Execução (F16).** Como `medico@`, no plantão de hoje: **Fazer check-in** (abre 30 min
    antes do início) e depois **Fazer check-out**. Como `chefia@` → Escala: ontem aparece
    **sem confirmação** (confirme ou conteste); anteontem está cumprido e ainda
    **contestável**. A Ana responde à contestação pela própria Escala, e a chefia decide.
    Os avisos de cada passo chegam pelo **sino** no topo.
-5. **Cadastro aberto e verificação.** Na tela de entrada, **Criar conta** → "Represento uma
+6. **Cadastro aberto e verificação.** Na tela de entrada, **Criar conta** → "Represento uma
    instituição". A instituição nasce pendente e não publica vaga. Entre como `operador@` →
    **Verificações** → aprove.
 

@@ -125,7 +125,12 @@ export class RepasseService {
 
       await tx.plantao.update({ where: { id: plantaoId }, data: { status: 'EM_REPASSE' } });
 
-      await this.fila.enfileirar(tx, repasse.id, dados.indicados, 'INDICACAO');
+      await this.fila.enfileirar(
+        tx,
+        { plantaoId, repasseId: repasse.id },
+        dados.indicados,
+        'INDICACAO',
+      );
 
       await this.auditoria.registrar(
         {
@@ -177,7 +182,7 @@ export class RepasseService {
     await this.fila.avancar(repasseId);
 
     const repasse = await this.exigir(repasseId);
-    const convite = await this.prisma.conviteRepasse.findFirst({
+    const convite = await this.prisma.convite.findFirst({
       where: { repasseId, status: 'ATIVO', medicoId },
     });
 
@@ -196,7 +201,7 @@ export class RepasseService {
     const substituto = await this.nomeDoMedico(medicoId);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.conviteRepasse.update({
+      await tx.convite.update({
         where: { id: convite.id },
         data: { status: 'ACEITO', respondidoEm: new Date() },
       });
@@ -261,7 +266,7 @@ export class RepasseService {
   async recusarConvite(repasseId: string, medicoId: string): Promise<RepasseResponse> {
     await this.fila.avancar(repasseId);
 
-    const convite = await this.prisma.conviteRepasse.findFirst({
+    const convite = await this.prisma.convite.findFirst({
       where: { repasseId, status: 'ATIVO', medicoId },
     });
 
@@ -274,7 +279,7 @@ export class RepasseService {
     const convidado = await this.nomeDoMedico(medicoId);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.conviteRepasse.update({
+      await tx.convite.update({
         where: { id: convite.id },
         data: { status: 'RECUSADO', respondidoEm: new Date() },
       });
@@ -349,7 +354,7 @@ export class RepasseService {
       });
 
       // Quem ainda esperava na fila não chega mais a ser convidado.
-      await tx.conviteRepasse.updateMany({
+      await tx.convite.updateMany({
         where: { repasseId, status: 'NA_FILA' },
         data: { status: 'CANCELADO' },
       });
@@ -514,14 +519,14 @@ export class RepasseService {
 
     this.exigirTransicao(repasse.status, 'CANCELADO');
 
-    const ativos = await this.prisma.conviteRepasse.findMany({
+    const ativos = await this.prisma.convite.findMany({
       where: { repasseId, status: 'ATIVO' },
       select: { id: true, medicoId: true },
     });
     const plantao = await this.escala.buscarPlantao(repasse.plantaoId);
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.conviteRepasse.updateMany({
+      await tx.convite.updateMany({
         where: { repasseId, status: { in: ['NA_FILA', 'ATIVO'] } },
         data: { status: 'CANCELADO' },
       });
@@ -580,14 +585,19 @@ export class RepasseService {
     const plantao = await this.escala.buscarPlantao(repasse.plantaoId);
     await this.fila.validarIndicados(plantao, titularId, ids);
 
-    const jaConvidados = await this.prisma.conviteRepasse.findMany({
+    const jaConvidados = await this.prisma.convite.findMany({
       where: { repasseId, medicoId: { in: [...ids] } },
       select: { medicoId: true },
     });
     const novos = ids.filter((id) => !jaConvidados.some((c) => c.medicoId === id));
 
     await this.prisma.$transaction(async (tx) => {
-      await this.fila.enfileirar(tx, repasseId, novos, 'INDICACAO');
+      await this.fila.enfileirar(
+        tx,
+        { plantaoId: repasse.plantaoId, repasseId },
+        novos,
+        'INDICACAO',
+      );
       // Nova indicação reabre a fila: quando ela esgotar, o matching roda de novo.
       await tx.repasse.update({ where: { id: repasseId }, data: { filaEsgotadaEm: null } });
     });
@@ -603,7 +613,7 @@ export class RepasseService {
 
   /** A fila inteira — para o titular e a chefia, não para os outros convidados. */
   async filaDoRepasse(repasseId: string): Promise<ConviteResponse[]> {
-    const convites = await this.prisma.conviteRepasse.findMany({
+    const convites = await this.prisma.convite.findMany({
       where: { repasseId },
       include: { medico: RESUMO_MEDICO },
       orderBy: { ordem: 'asc' },

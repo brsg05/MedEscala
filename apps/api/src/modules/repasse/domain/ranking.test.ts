@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { ordenarParaConvite, type MetricasDoCandidato } from './ranking';
+import { ordenarParaConvite, taxaDeResposta, type MetricasDoCandidato } from './ranking';
 
 function c(
   nome: string,
   vinculoComInstituicao: number,
   plantoesCumpridos: number,
   medicoId = nome,
+  taxa = 1,
 ): MetricasDoCandidato {
-  return { medicoId, nome, vinculoComInstituicao, plantoesCumpridos };
+  return { medicoId, nome, vinculoComInstituicao, plantoesCumpridos, taxaDeResposta: taxa };
 }
 
-describe('ordenação provisória do matching (DEC-094)', () => {
+describe('ordenação do matching (DEC-094, DEC-136)', () => {
   it('põe primeiro quem tem mais vínculo com a instituição', () => {
     const ordem = ordenarParaConvite([c('Ana', 1, 50), c('Bruno', 3, 0), c('Carla', 2, 10)]);
     expect(ordem.map((x) => x.nome)).toEqual(['Bruno', 'Carla', 'Ana']);
@@ -18,6 +19,20 @@ describe('ordenação provisória do matching (DEC-094)', () => {
 
   it('desempata pelo número de plantões cumpridos', () => {
     const ordem = ordenarParaConvite([c('Ana', 2, 1), c('Bruno', 2, 9)]);
+    expect(ordem.map((x) => x.nome)).toEqual(['Bruno', 'Ana']);
+  });
+
+  it('depois, quem responde aos convites vem antes de quem deixa vencer', () => {
+    const ordem = ordenarParaConvite([
+      c('Ana', 2, 5, 'a', 0.5),
+      c('Bruno', 2, 5, 'b', 1),
+      c('Carla', 2, 5, 'c', 0.8),
+    ]);
+    expect(ordem.map((x) => x.nome)).toEqual(['Bruno', 'Carla', 'Ana']);
+  });
+
+  it('a taxa de resposta não passa na frente do vínculo nem dos cumpridos', () => {
+    const ordem = ordenarParaConvite([c('Ana', 1, 0, 'a', 1), c('Bruno', 2, 0, 'b', 0)]);
     expect(ordem.map((x) => x.nome)).toEqual(['Bruno', 'Ana']);
   });
 
@@ -47,5 +62,15 @@ describe('ordenação provisória do matching (DEC-094)', () => {
     const entrada = [c('Bruno', 0, 0), c('Ana', 0, 0)];
     ordenarParaConvite(entrada);
     expect(entrada.map((x) => x.nome)).toEqual(['Bruno', 'Ana']);
+  });
+});
+
+describe('taxa de resposta (DEC-136)', () => {
+  it('recusar conta como resposta; só vencer pesa contra', () => {
+    expect(taxaDeResposta({ respondidos: 3, recebidos: 4 })).toBe(0.75);
+  });
+
+  it('sem histórico, 1 — ninguém começa em desvantagem', () => {
+    expect(taxaDeResposta({ respondidos: 0, recebidos: 0 })).toBe(1);
   });
 });

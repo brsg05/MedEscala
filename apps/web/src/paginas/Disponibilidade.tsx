@@ -13,9 +13,10 @@ import { Button } from '@/componentes/ui/button';
 import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
 import { doCampoLocal, paraCampoLocal, UM_DIA_MS, UMA_HORA_MS } from '@/lib/datas';
+import { VagasAbertas } from './VagasAbertas';
 
 /**
- * F04 — declarar disponibilidade.
+ * F04 — declarar disponibilidade; e, desde a F10, procurar vaga (DEC-168).
  *
  * Com a DEC-062 esta tela virou a porta de entrada do médico no mercado: a
  * chefia só enxerga quem declarou janela cobrindo o horário da vaga. O texto do
@@ -44,7 +45,7 @@ export function Disponibilidade(): React.JSX.Element {
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-gelo-2">
           Uma chefia só encontra você para os horários que você declarar aqui. Fora dessas janelas,
-          você não aparece em busca nenhuma.
+          você não aparece em busca nenhuma — mas pode procurar vagas abertas e se candidatar.
         </p>
       </header>
 
@@ -79,6 +80,8 @@ export function Disponibilidade(): React.JSX.Element {
           <JanelaDeclarada key={j.id} janela={j} aoRemover={janelas.recarregar} />
         ))}
       </section>
+
+      <VagasAbertas />
     </div>
   );
 }

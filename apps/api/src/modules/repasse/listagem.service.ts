@@ -40,13 +40,25 @@ export class ListagemDeRepassesService {
 
     if (medicoId !== null) {
       // Só o convite da VEZ: quem está NA_FILA ainda não foi convidado (DEC-089).
-      const convites = await this.prisma.conviteRepasse.findMany({
+      // De repasse ou de vaga aberta (DEC-164).
+      const convites = await this.prisma.convite.findMany({
         where: { medicoId, status: 'ATIVO', prazoAte: { gt: new Date() } },
         orderBy: { prazoAte: 'asc' },
-        select: { repasseId: true },
+        select: { repasseId: true, plantaoId: true, prazoAte: true, origem: true },
       });
 
       for (const c of convites) {
+        if (c.repasseId === null) {
+          decisoes.push({
+            tipo: 'ACEITAR_VAGA',
+            plantao: await this.plantao(c.plantaoId),
+            // `prazoAte > agora` no filtro: nunca nulo aqui.
+            prazoConviteAte: (c.prazoAte ?? new Date()).toISOString(),
+            origemConvite: c.origem,
+          });
+          continue;
+        }
+
         const repasse = await this.repasse.buscar(c.repasseId);
         decisoes.push({
           tipo: 'ACEITAR_CONVITE',

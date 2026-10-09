@@ -31,6 +31,12 @@ export const PLANTAO_COMPLETO = {
   titular: { include: { usuario: { select: { nome: true } } } },
   executante: { include: { usuario: { select: { nome: true } } } },
   contestacao: true,
+  // F10 — só lidos quando a resposta leva `selecao` (escala da instituição).
+  candidaturas: { where: { status: 'PENDENTE' }, select: { id: true } },
+  convites: {
+    where: { status: 'ATIVO', repasseId: null },
+    include: { medico: { include: { usuario: { select: { nome: true } } } } },
+  },
 } as const;
 
 /** DEC-131 — terminou e ninguém confirmou. Derivado do horário, não gravado. */
@@ -234,8 +240,13 @@ export class EscalaService {
     });
   }
 
-  paraResposta(p: PlantaoCompleto): PlantaoResponse {
+  /**
+   * `comSelecao` só na escala da instituição: o médico não vê quem mais foi
+   * convidado para uma vaga, nem quantos se candidataram (DEC-108).
+   */
+  paraResposta(p: PlantaoCompleto, opcoes: { comSelecao?: boolean } = {}): PlantaoResponse {
     const setor = p.escala.setor;
+    const daVez = p.convites[0] ?? null;
 
     return {
       id: p.id,
@@ -288,6 +299,22 @@ export class EscalaService {
                 resolvidaEm: p.contestacao.resolvidaEm?.toISOString() ?? null,
               },
       },
+      selecao:
+        opcoes.comSelecao === true && (p.status === 'ABERTO' || p.status === 'EM_SELECAO')
+          ? {
+              candidaturasPendentes: p.candidaturas.length,
+              convidadoDaVez:
+                daVez === null
+                  ? null
+                  : {
+                      id: daVez.medico.id,
+                      nome: daVez.medico.usuario.nome,
+                      crm: daVez.medico.crm,
+                      crmUf: daVez.medico.crmUf,
+                    },
+              prazoConviteAte: daVez?.prazoAte?.toISOString() ?? null,
+            }
+          : null,
     };
   }
 }

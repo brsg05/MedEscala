@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Centavos } from './dinheiro.js';
 import { InstanteUtc } from './datahora.js';
 import { ExecucaoResponse } from './execucao.js';
+import { StatusCandidatura } from './vagas.js';
 
 /**
  * Contratos do domínio — Sprints 1 a 3.
@@ -242,6 +243,18 @@ export const PlantaoResponse = z.strictObject({
   executante: MedicoResumo.nullable(),
   /** F16 — check-in, check-out e contestação. */
   execucao: ExecucaoResponse,
+  /**
+   * F10 — como anda o preenchimento da vaga. Só na escala da instituição: para
+   * o médico é nulo, porque um convidado não precisa saber quem mais foi
+   * chamado (DEC-108).
+   */
+  selecao: z
+    .strictObject({
+      candidaturasPendentes: z.number().int().nonnegative(),
+      convidadoDaVez: MedicoResumo.nullable(),
+      prazoConviteAte: InstanteUtc.nullable(),
+    })
+    .nullable(),
 });
 export type PlantaoResponse = z.infer<typeof PlantaoResponse>;
 
@@ -375,7 +388,7 @@ export type AtribuirPlantaoRequest = z.infer<typeof AtribuirPlantaoRequest>;
  * pedir "me da as aprovacoes" abriria caminho para um medico listar decisoes que
  * nao sao dele.
  */
-export const TipoDeDecisao = z.enum(['ACEITAR_CONVITE', 'APROVAR_SUBSTITUICAO']);
+export const TipoDeDecisao = z.enum(['ACEITAR_CONVITE', 'APROVAR_SUBSTITUICAO', 'ACEITAR_VAGA']);
 export type TipoDeDecisao = z.infer<typeof TipoDeDecisao>;
 
 export const RepasseComPlantao = z.strictObject({
@@ -384,11 +397,29 @@ export const RepasseComPlantao = z.strictObject({
 });
 export type RepasseComPlantao = z.infer<typeof RepasseComPlantao>;
 
-export const DecisaoResponse = z.strictObject({
-  tipo: TipoDeDecisao,
-  repasse: RepasseResponse,
-  plantao: PlantaoResponse,
-});
+/**
+ * O que espera decisão. Repasse: convite para cobrir (médico) ou substituição a
+ * aprovar (chefia). Vaga: convite da instituição para uma vaga aberta (F10) —
+ * sem repasse, então com o prazo direto na decisão.
+ */
+export const DecisaoResponse = z.discriminatedUnion('tipo', [
+  z.strictObject({
+    tipo: z.literal('ACEITAR_CONVITE'),
+    repasse: RepasseResponse,
+    plantao: PlantaoResponse,
+  }),
+  z.strictObject({
+    tipo: z.literal('APROVAR_SUBSTITUICAO'),
+    repasse: RepasseResponse,
+    plantao: PlantaoResponse,
+  }),
+  z.strictObject({
+    tipo: z.literal('ACEITAR_VAGA'),
+    plantao: PlantaoResponse,
+    prazoConviteAte: InstanteUtc,
+    origemConvite: OrigemConvite,
+  }),
+]);
 export type DecisaoResponse = z.infer<typeof DecisaoResponse>;
 
 // --- cadastro aberto (DEC-059) ----------------------------------------------
@@ -446,7 +477,7 @@ export type SetorResumo = z.infer<typeof SetorResumo>;
 
 export const EstruturaResponse = z.strictObject({
   instituicao: InstituicaoResumo.extend({
-    prazoConviteRepasseMinutos: z.number().int(),
+    prazoConviteMinutos: z.number().int(),
     prazoContestacaoHoras: z.number().int(),
   }),
   unidades: z.array(
@@ -525,7 +556,7 @@ export type BuscaPorCrmQuery = z.infer<typeof BuscaPorCrmQuery>;
  */
 export const ConfiguracaoInstituicaoRequest = z
   .strictObject({
-    prazoConviteRepasseMinutos: z
+    prazoConviteMinutos: z
       .number()
       .int()
       .min(5, 'O prazo mínimo é de 5 minutos')
@@ -539,7 +570,21 @@ export const ConfiguracaoInstituicaoRequest = z
       .optional(),
   })
   .refine(
-    (c) => c.prazoConviteRepasseMinutos !== undefined || c.prazoContestacaoHoras !== undefined,
+    (c) => c.prazoConviteMinutos !== undefined || c.prazoContestacaoHoras !== undefined,
     'Informe ao menos um prazo',
   );
 export type ConfiguracaoInstituicaoRequest = z.infer<typeof ConfiguracaoInstituicaoRequest>;
+
+// --- F10 — vagas abertas para o médico (DEC-166, DEC-167) ---------------------
+
+/**
+ * Uma vaga aberta, como o médico a vê. `compativel` responde "posso me
+ * candidatar?" (RN02, RN03); quando não, `motivo` diz por quê (DEC-167).
+ */
+export const VagaResponse = z.strictObject({
+  plantao: PlantaoResponse,
+  compativel: z.boolean(),
+  motivo: z.string().nullable(),
+  minhaCandidatura: z.strictObject({ id: z.uuid(), status: StatusCandidatura }).nullable(),
+});
+export type VagaResponse = z.infer<typeof VagaResponse>;

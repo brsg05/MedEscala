@@ -55,12 +55,12 @@ export class InstituicaoService {
    */
   async configurar(
     instituicaoId: string,
-    prazos: { prazoConviteRepasseMinutos?: number; prazoContestacaoHoras?: number },
+    prazos: { prazoConviteMinutos?: number; prazoContestacaoHoras?: number },
     atorId: string,
   ): Promise<void> {
     const anterior = await this.prisma.instituicao.findUnique({
       where: { id: instituicaoId },
-      select: { prazoConviteRepasseMinutos: true, prazoContestacaoHoras: true },
+      select: { prazoConviteMinutos: true, prazoContestacaoHoras: true },
     });
 
     if (anterior === null) {
@@ -70,15 +70,15 @@ export class InstituicaoService {
     await this.prisma.$transaction(async (tx) => {
       await tx.instituicao.update({ where: { id: instituicaoId }, data: prazos });
 
-      if (prazos.prazoConviteRepasseMinutos !== undefined) {
+      if (prazos.prazoConviteMinutos !== undefined) {
         await this.auditoria.registrar(
           {
             acao: 'PRAZO_DE_CONVITE_ALTERADO',
             entidade: 'Instituicao',
             entidadeId: instituicaoId,
             atorId,
-            estadoAnterior: String(anterior.prazoConviteRepasseMinutos),
-            estadoNovo: String(prazos.prazoConviteRepasseMinutos),
+            estadoAnterior: String(anterior.prazoConviteMinutos),
+            estadoNovo: String(prazos.prazoConviteMinutos),
           },
           tx,
         );
@@ -207,7 +207,7 @@ export class InstituicaoService {
         nome: inst.nome,
         cnpj: inst.cnpj,
         status: inst.status,
-        prazoConviteRepasseMinutos: inst.prazoConviteRepasseMinutos,
+        prazoConviteMinutos: inst.prazoConviteMinutos,
         prazoContestacaoHoras: inst.prazoContestacaoHoras,
       },
       unidades: inst.unidades.map((u) => ({
@@ -255,7 +255,7 @@ export class InstituicaoService {
       orderBy: { inicio: 'asc' },
     });
 
-    return plantoes.map((p) => this.escala.paraResposta(p));
+    return plantoes.map((p) => this.escala.paraResposta(p, { comSelecao: true }));
   }
 
   /**

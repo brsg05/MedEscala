@@ -11,7 +11,6 @@ import {
   Query,
 } from '@nestjs/common';
 import {
-  AtribuirPlantaoRequest,
   ConcederChefiaRequest,
   ConfiguracaoInstituicaoRequest,
   CriarPlantaoRequest,
@@ -30,7 +29,6 @@ import { Perfis } from '../auth/decorators/perfis.decorator';
 import { UsuarioAtual } from '../auth/decorators/usuario-atual.decorator';
 import { PerfilAcessoService } from '../auth/perfil-acesso.service';
 import { CredenciamentoService } from '../credenciamento/credenciamento.service';
-import { AtribuicaoService } from './atribuicao.service';
 import { EscalaService } from './escala.service';
 import { InstituicaoService, instituicoesComPerfil } from './instituicao.service';
 
@@ -50,7 +48,6 @@ export class EscalaController {
   constructor(
     private readonly escala: EscalaService,
     private readonly instituicao: InstituicaoService,
-    private readonly atribuicao: AtribuicaoService,
     private readonly credenciamento: CredenciamentoService,
     private readonly perfilAcesso: PerfilAcessoService,
     private readonly auditoria: AuditoriaService,
@@ -123,9 +120,9 @@ export class EscalaController {
     await this.instituicao.configurar(
       instituicaoId,
       {
-        ...(corpo.prazoConviteRepasseMinutos === undefined
+        ...(corpo.prazoConviteMinutos === undefined
           ? {}
-          : { prazoConviteRepasseMinutos: corpo.prazoConviteRepasseMinutos }),
+          : { prazoConviteMinutos: corpo.prazoConviteMinutos }),
         ...(corpo.prazoContestacaoHoras === undefined
           ? {}
           : { prazoContestacaoHoras: corpo.prazoContestacaoHoras }),
@@ -178,22 +175,6 @@ export class EscalaController {
       'CHEFIA_ESCALA',
     );
     return this.instituicao.candidatos(plantaoId);
-  }
-
-  /** F12 — escalar um médico na vaga e confirmar o plantão. */
-  @Perfis('ADMIN_INSTITUICAO', 'CHEFIA_ESCALA')
-  @Post('plantoes/:id/atribuir')
-  async atribuir(
-    @Param('id', ParseUUIDPipe) plantaoId: string,
-    @Body(new ZodValidationPipe(AtribuirPlantaoRequest)) corpo: AtribuirPlantaoRequest,
-    @UsuarioAtual() usuario: UsuarioAutenticado,
-  ): Promise<PlantaoResponse> {
-    return this.atribuicao.escalarMedico(
-      plantaoId,
-      corpo.medicoId,
-      usuario.id,
-      instituicoesComPerfil(usuario, 'ADMIN_INSTITUICAO', 'CHEFIA_ESCALA'),
-    );
   }
 
   // --- leitura de plantão (com checagem de participação) -----------------------

@@ -12,6 +12,7 @@ import { InstituicaoService } from './instituicao.service';
   imports: [CredenciamentoModule, AuthModule],
   controllers: [EscalaController],
   providers: [EscalaService, AtribuicaoService, InstituicaoService],
-  exports: [EscalaService, InstituicaoService],
+  // A atribuição sai para o módulo de vagas (F10), dono da rota de escalar.
+  exports: [EscalaService, InstituicaoService, AtribuicaoService],
 })
 export class EscalaModule {}
