@@ -1,0 +1,30 @@
+{
+  "name": "@medescala/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Schemas Zod e tipos compartilhados entre api e web (ADR-005)",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/cjs/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/cjs/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b tsconfig.build.json tsconfig.build.esm.json && node finalizar-build.mjs",
+    "dev": "tsc -b tsconfig.build.json tsconfig.build.esm.json --watch",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.6.2"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.0"
+  }
+}
