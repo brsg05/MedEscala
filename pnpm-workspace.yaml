@@ -1,0 +1,14 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm 10 bloqueia scripts de build por padrão. Declarar aqui evita que cada
+# integrante precise rodar `pnpm approve-builds` na mão — e evita o sintoma
+# confuso de "Prisma Client não foi gerado" depois de um install limpo.
+onlyBuiltDependencies:
+  - '@prisma/client'
+  - 'prisma'
+  - 'esbuild'
+  - 'supabase'
+  - '@swc/core'
+  - '@prisma/engines'

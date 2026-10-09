@@ -1,0 +1,43 @@
+{
+  "name": "medescala",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Plataforma de intermediação, formalização e rastreabilidade de plantões médicos e de repasses entre médicos",
+  "packageManager": "pnpm@10.26.0",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "verify": "pnpm run lint && pnpm run format:check && pnpm run typecheck && pnpm run test",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r --parallel run typecheck",
+    "test": "pnpm -r run test",
+    "build": "pnpm -r run build",
+    "dev": "pnpm -r --parallel run dev",
+    "db:migrate": "pnpm --filter @medescala/api exec prisma migrate dev",
+    "db:deploy": "pnpm --filter @medescala/api exec prisma migrate deploy",
+    "db:seed": "pnpm --filter @medescala/api exec prisma db seed",
+    "db:studio": "pnpm --filter @medescala/api exec prisma studio",
+    "supabase": "supabase",
+    "db:policies": "pnpm --filter @medescala/api run db:policies",
+    "db:reset": "pnpm exec supabase db reset && pnpm run db:deploy && pnpm run db:policies && pnpm run db:seed",
+    "test:e2e": "pnpm --filter @medescala/api run test:e2e",
+    "db:verificar-policies": "pnpm --filter @medescala/api run db:verificar-policies",
+    "db:nova-migration": "pnpm --filter @medescala/api run db:nova-migration",
+    "dev:infra": "supabase start && docker compose up -d --wait",
+    "dev:infra:parar": "docker compose down && supabase stop"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.12.0",
+    "prettier": "^3.9.6",
+    "supabase": "^2.117.0",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.0"
+  }
+}

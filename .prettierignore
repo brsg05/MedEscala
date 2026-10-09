@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+coverage
+pnpm-lock.yaml
+.pnpm-store
+
+# Migrations são geradas pelo Prisma — não reformatar.
+apps/api/prisma/migrations
+
+# Artefatos locais do Supabase CLI.
+supabase/.temp
+supabase/.branches
+
+# Artefatos da disciplina (binários e texto entregue como está).
+guia do projeto

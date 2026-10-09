@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    // §12 do guia: `strict: true`, sem exceção. Não desligar por pressão de prazo —
+    // o ADR da stack diz que `strict` desligado anula metade do motivo de usar TS.
+    "strict": true,
+
+    // Higiene que não muda semântica de código existente.
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  }
+}

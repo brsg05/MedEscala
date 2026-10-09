@@ -134,3 +134,28 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# ---------------------------------------------------------------------------
+# MedEscala
+# ---------------------------------------------------------------------------
+
+# Supabase CLI — estado local da stack. `config.toml` e `migrations/` SÃO versionados.
+supabase/.temp/
+supabase/.branches/
+
+# Prisma Client é gerado no install (ver `onlyBuiltDependencies`).
+apps/api/generated/
+apps/api/prisma/generated/
+
+# Nest / Vite
+apps/api/dist/
+apps/web/dist/
+*.local
+
+# Vitest
+**/.vitest/
+**/test-results/
+
+# `.env` já está ignorado acima. `.env.example` NÃO — ele é a documentação das
+# variáveis exigidas (§13 do guia: nunca commitar `.env`).
+!.env.example
