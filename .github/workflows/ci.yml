@@ -1,0 +1,134 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Um PR que recebe push novo cancela a execução anterior — economiza minutos
+# e evita revisar resultado de commit já superado.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  # Critério de aceite do Sprint 0: "PR com teste quebrado ou erro de tipo é
+  # bloqueado". `pnpm verify` é exatamente o mesmo comando que roda na máquina de
+  # cada integrante — se passa aqui e falha lá (ou o contrário), é bug de setup,
+  # não de configuração divergente de CI.
+  qualidade:
+    name: Lint, formato, tipos e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # `contracts` precisa estar compilado antes do typecheck de api e web:
+      # os dois importam o `dist` dele.
+      - run: pnpm --filter @medescala/contracts run build
+
+      - run: pnpm --filter @medescala/api exec prisma generate
+
+      - run: pnpm run verify
+
+      - run: pnpm run build
+
+  # Camada 1 do D7 — garantias de schema sobre Postgres puro em Testcontainers.
+  # O runner do GitHub já tem Docker, então não há passo extra de setup.
+  testes-de-schema:
+    name: Schema (Testcontainers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @medescala/contracts run build
+      - run: pnpm --filter @medescala/api exec prisma generate
+
+      - name: Testes de schema (imutabilidade da trilha, RNF04)
+        run: pnpm --filter @medescala/api run test
+
+  # Camada 2 do D7 — fluxo real de auth contra a stack do Supabase.
+  testes-e2e:
+    name: E2E (Supabase local + Redis)
+    runs-on: ubuntu-latest
+    # A fila de convites agenda o vencimento de cada convite no Redis (ADR-027).
+    # Mesma imagem do docker-compose.yml; aqui como service do runner.
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @medescala/contracts run build
+
+      - name: Subir Supabase local
+        run: pnpm exec supabase start
+
+      - name: Escrever .env a partir do supabase status
+        working-directory: apps/api
+        run: |
+          STATUS=$(pnpm exec supabase status -o json)
+          {
+            echo "DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+            echo "DIRECT_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+            echo "SUPABASE_URL=$(echo "$STATUS" | jq -r .API_URL)"
+            echo "SUPABASE_ANON_KEY=$(echo "$STATUS" | jq -r .ANON_KEY)"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$(echo "$STATUS" | jq -r .SERVICE_ROLE_KEY)"
+            echo "WEB_ORIGIN=http://localhost:5173"
+            echo "COOKIE_SECRET=ci-secret-com-mais-de-16-caracteres"
+            echo "SEED_SENHA_PADRAO=medescala123"
+            echo "NODE_ENV=test"
+            echo "PORT=3000"
+            echo "REDIS_URL=redis://127.0.0.1:6379"
+          } > .env
+
+      - run: pnpm --filter @medescala/api exec prisma generate
+
+      # A ORDEM destes três passos é o D3 em forma executável.
+      - name: Migrations (Prisma)
+        run: pnpm run db:deploy
+
+      - name: Policies (SQL manual)
+        run: pnpm run db:policies
+
+      - name: Conferir que as policies sobreviveram à migration
+        run: pnpm run db:verificar-policies
+
+      - run: pnpm run db:seed
+
+      - name: Testes e2e (401, 403, CSRF, rotação, fila de convites)
+        run: pnpm run test:e2e
+
+      - name: Encerrar Supabase
+        if: always()
+        run: pnpm exec supabase stop
