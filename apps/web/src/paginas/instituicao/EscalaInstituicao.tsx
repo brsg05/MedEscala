@@ -12,6 +12,7 @@ import { api, ErroDaApi } from '@/api/cliente';
 import { useRecurso } from '@/hooks/useRecurso';
 import { ErroDeFormulario } from '@/componentes/Painel';
 import { ExecucaoDoPlantao } from '@/componentes/ExecucaoDoPlantao';
+import { BotaoTermos } from '@/componentes/Termos';
 import { Button } from '@/componentes/ui/button';
 import { Etiqueta } from '@/componentes/ui/etiqueta';
 import {
@@ -291,6 +292,7 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
                 >
                   Trilha
                 </Button>
+                {p.executante !== null && <BotaoTermos plantaoId={p.id} />}
               </div>
 
               {chefia && (

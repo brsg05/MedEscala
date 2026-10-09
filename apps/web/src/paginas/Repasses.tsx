@@ -14,6 +14,7 @@ import { useRecurso } from '@/hooks/useRecurso';
 import { MontadorDeFila } from '@/componentes/MontadorDeFila';
 import { ErroDeFormulario, Painel } from '@/componentes/Painel';
 import { Button } from '@/componentes/ui/button';
+import { BotaoTermos } from '@/componentes/Termos';
 import { Etiqueta } from '@/componentes/ui/etiqueta';
 import { EstadoVazio } from '@/componentes/EstadoVazio';
 import { AvisoDeResponsabilidade, CadeiaTriade } from '@/componentes/CadeiaTriade';
@@ -220,6 +221,12 @@ function CartaoDeRepasse({
               {cancelando ? 'Cancelando…' : 'Cancelar repasse'}
             </Button>
           )}
+        </div>
+      )}
+
+      {repasse.status === 'APROVADO' && (
+        <div className="mt-4 flex">
+          <BotaoTermos plantaoId={plantao.id} />
         </div>
       )}
 

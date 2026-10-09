@@ -797,3 +797,41 @@ describe('Conta (DEC-183)', () => {
     expect(await screen.findByText('Sua escala')).toBeDefined();
   });
 });
+
+describe('termos (F13)', () => {
+  it('mostra quem assinou, o que falta e oferece o PDF', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [PLANTAO], alertaCargaHoraria: null }),
+      [`/plantoes/${PLANTAO.id}/termos`]: () =>
+        json(200, [
+          {
+            id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+            tipo: 'CONTRATO_PLANTAO',
+            emitidoEm: new Date().toISOString(),
+            hash: 'a'.repeat(64),
+            vigente: true,
+            assinaturas: [
+              {
+                papel: 'INSTITUICAO',
+                nome: 'Hospital Escola',
+                registro: 'CNPJ 12.345.678/0001-90',
+                metodo: 'ACEITE_NO_APP',
+                acao: 'Escalou o médico',
+                assinadaEm: new Date().toISOString(),
+              },
+            ],
+            pendentes: ['MEDICO'],
+          },
+        ]),
+    });
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Termos' }));
+
+    expect(await screen.findByText('Contrato do plantão')).toBeDefined();
+    expect(screen.getByText(/Escalou o médico/u)).toBeDefined();
+    expect(screen.getByText('o check-in vale como aceite')).toBeDefined();
+    expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeDefined();
+  });
+});

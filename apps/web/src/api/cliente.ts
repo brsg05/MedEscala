@@ -31,6 +31,7 @@ import {
   RecusarRepasseRequest,
   RepasseComPlantao,
   RepasseResponse,
+  TermoResponse,
   ResolverContestacaoRequest,
   ResponderContestacaoRequest,
   VagaResponse,
@@ -108,6 +109,28 @@ async function requisitar<T>(
   // A resposta é validada com o MESMO schema que a api usa para produzi-la.
   // Se o contrato mudar de um lado só, quebra aqui — e antes disso, no typecheck.
   return schema.parse(await resposta.json());
+}
+
+/**
+ * Download de arquivo (F13): mesmo cookie de sessão e mesmo tratamento de erro,
+ * mas o corpo é binário — não passa por schema.
+ */
+async function baixar(caminho: string): Promise<{ arquivo: Blob; nome: string }> {
+  const resposta = await fetch(`${BASE}${caminho}`, { credentials: 'include' });
+
+  if (!resposta.ok) {
+    const bruto: unknown = await resposta.json().catch(() => null);
+    const erro = ErroApi.safeParse(bruto);
+    throw new ErroDaApi(
+      erro.success ? erro.data.codigo : 'ERRO_DESCONHECIDO',
+      erro.success ? erro.data.mensagem : `Falha no download (${String(resposta.status)})`,
+      resposta.status,
+    );
+  }
+
+  const disposicao = resposta.headers.get('Content-Disposition') ?? '';
+  const nome = /filename="([^"]+)"/u.exec(disposicao)?.[1] ?? 'documento.pdf';
+  return { arquivo: await resposta.blob(), nome };
 }
 
 const Nada = z.undefined();
@@ -341,6 +364,14 @@ export const api = {
       PlantaoResponse,
       ResolverContestacaoRequest.parse(dados),
     ),
+
+  // --- termos (F13) -------------------------------------------------------------
+
+  termos: (plantaoId: string): Promise<TermoResponse[]> =>
+    requisitar(`/plantoes/${plantaoId}/termos`, z.array(TermoResponse)),
+
+  pdfDoTermo: (termoId: string): Promise<{ arquivo: Blob; nome: string }> =>
+    baixar(`/termos/${termoId}/pdf`),
 
   // --- avisos (F22) -----------------------------------------------------------
 

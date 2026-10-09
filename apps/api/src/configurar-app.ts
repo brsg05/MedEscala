@@ -22,6 +22,9 @@ export function configurarApp(app: INestApplication): void {
   app.enableCors({
     origin: config.get('WEB_ORIGIN', { infer: true }),
     credentials: true,
+    // O nome do PDF do termo (F13) vem neste header; sem expô-lo, o navegador
+    // o esconde do JS numa requisição entre origens.
+    exposedHeaders: ['Content-Disposition'],
   });
 
   // Sem `ValidationPipe` global de propósito: ele depende de `class-validator`, e o

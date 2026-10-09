@@ -86,13 +86,22 @@ const CHECAGENS: readonly Checagem[] = [
     sql: `SELECT 1 FROM pg_constraint WHERE conname = 'contestacao_resolucao_completa'`,
   },
   {
+    nome: 'termo imutável depois de emitido (F13)',
+    sql: `SELECT 1 FROM pg_trigger WHERE tgname = 'termo_imutavel' AND NOT tgisinternal`,
+  },
+  {
+    nome: 'assinatura cobre o hash do termo (F13)',
+    sql: `SELECT 1 FROM pg_trigger WHERE tgname = 'assinatura_cobre_o_termo' AND NOT tgisinternal`,
+  },
+  {
     nome: 'RLS ligada em todas as tabelas de domínio',
     sql: `SELECT 1 FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
           WHERE n.nspname = 'public'
             AND c.relname IN ('usuario','instituicao','perfil_acesso','refresh_token','evento_auditoria',
                               'medico','janela_disponibilidade','unidade','setor','escala','plantao','repasse',
-                              'convite','notificacao','contestacao','candidatura')
+                              'convite','notificacao','contestacao','candidatura',
+                              'termo','assinatura_termo')
             AND c.relrowsecurity = false`,
   },
 ];

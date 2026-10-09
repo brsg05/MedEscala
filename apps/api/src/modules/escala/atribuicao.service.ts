@@ -4,6 +4,7 @@ import type { PlantaoResponse } from '@medescala/contracts';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { NotificacaoService } from '../notificacao/notificacao.service';
+import { TermoService, type Aceite } from '../termos/termo.service';
 import { descreverPlantao } from '../notificacao/textos';
 import {
   ForaDoEscopoDaInstituicaoError,
@@ -32,6 +33,7 @@ export class AtribuicaoService {
     private readonly auditoria: AuditoriaService,
     private readonly escala: EscalaService,
     private readonly notificacoes: NotificacaoService,
+    private readonly termos: TermoService,
   ) {}
 
   /**
@@ -50,6 +52,12 @@ export class AtribuicaoService {
       instituicoesDoAtor?: readonly string[];
       avisarMedico?: boolean;
       dentroDaTransacao?: (tx: Prisma.TransactionClient) => Promise<void>;
+      /**
+       * F13 — as assinaturas do contrato (DEC-185). Por padrão, a instituição
+       * assina ao escalar, e o médico fica pendente até o check-in.
+       */
+      aceiteDaInstituicao?: Aceite;
+      aceiteDoMedico?: Aceite | null;
     } = {},
   ): Promise<PlantaoResponse> {
     const plantao = await this.escala.buscarPlantao(plantaoId);
@@ -133,6 +141,18 @@ export class AtribuicaoService {
       );
 
       await opcoes.dentroDaTransacao?.(tx);
+
+      await this.termos.emitirContrato(
+        tx,
+        plantaoId,
+        medicoId,
+        opcoes.aceiteDaInstituicao ?? {
+          usuarioId: atorId,
+          acao: 'Escalou o médico',
+          em: new Date(),
+        },
+        opcoes.aceiteDoMedico ?? null,
+      );
 
       if (opcoes.avisarMedico === false) {
         return p;

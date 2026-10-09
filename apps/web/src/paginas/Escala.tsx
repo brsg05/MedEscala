@@ -5,6 +5,7 @@ import { useRecurso } from '@/hooks/useRecurso';
 import { Button } from '@/componentes/ui/button';
 import { EstadoVazio } from '@/componentes/EstadoVazio';
 import { ExecucaoDoPlantao } from '@/componentes/ExecucaoDoPlantao';
+import { BotaoTermos } from '@/componentes/Termos';
 import {
   LegendaDeCobertura,
   TrilhoDeCobertura,
@@ -193,16 +194,19 @@ export function Escala(): React.JSX.Element {
                 </p>
               </div>
 
-              {pedivel(p) && (
-                <Button
-                  variante="contorno"
-                  tamanho="pequeno"
-                  className="mt-3 w-full"
-                  onClick={() => setPlantaoEmRepasse(p)}
-                >
-                  Pedir repasse
-                </Button>
-              )}
+              <div className="mt-3 flex gap-2">
+                {pedivel(p) && (
+                  <Button
+                    variante="contorno"
+                    tamanho="pequeno"
+                    className="flex-1"
+                    onClick={() => setPlantaoEmRepasse(p)}
+                  >
+                    Pedir repasse
+                  </Button>
+                )}
+                <BotaoTermos plantaoId={p.id} />
+              </div>
 
               {p.status === 'EM_REPASSE' && (
                 <p className="mt-3 text-xs text-repasse">

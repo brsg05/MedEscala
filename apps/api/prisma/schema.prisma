@@ -386,6 +386,7 @@ model Plantao {
   contestacao  Contestacao?
   convites     Convite[]
   candidaturas Candidatura[]
+  termos       Termo[]
 
   escala     Escala    @relation(fields: [escalaId], references: [id], onDelete: Cascade)
   titular    Medico?   @relation("PlantaoTitular", fields: [medicoTitularId], references: [id])
@@ -430,6 +431,7 @@ model Repasse {
   titular    Medico    @relation("RepasseTitular", fields: [medicoTitularId], references: [id])
   substituto Medico?   @relation("RepasseSubstituto", fields: [medicoSubstitutoId], references: [id])
   convites   Convite[]
+  termo      Termo?
 
   @@index([plantaoId])
   @@index([status])
@@ -618,4 +620,74 @@ model Candidatura {
   @@unique([plantaoId, medicoId])
   @@index([plantaoId, status])
   @@map("candidatura")
+}
+
+// --- F13 — termos contratuais (DEC-184 a DEC-187) ----------------------------
+
+enum TipoTermo {
+  /// Médico escalado e instituição.
+  CONTRATO_PLANTAO
+  /// Repasse aprovado: titular, substituto e instituição.
+  SUBSTITUICAO
+}
+
+enum PapelNoTermo {
+  MEDICO
+  TITULAR
+  SUBSTITUTO
+  INSTITUICAO
+}
+
+/// DEC-185 — `provisória`. Hoje toda assinatura é o aceite registrado no app; o
+/// método existe para a troca por gov.br ou ICP-Brasil (DEC-122) não exigir
+/// refazer o termo.
+enum MetodoAssinatura {
+  ACEITE_NO_APP
+}
+
+/// O retrato do conteúdo e seu hash são congelados na emissão (DEC-187): o PDF é
+/// gerado sob demanda a partir do retrato, e sai sempre igual.
+model Termo {
+  id        String    @id @default(uuid()) @db.Uuid
+  tipo      TipoTermo
+  plantaoId String    @map("plantao_id") @db.Uuid
+  repasseId String?   @unique @map("repasse_id") @db.Uuid
+
+  /// JSON canônico (chaves ordenadas) — o que foi acordado, como foi acordado.
+  conteudo Json
+  /// SHA-256, em hexadecimal, do JSON canônico.
+  hash     String @db.Char(64)
+
+  emitidoEm     DateTime  @default(now()) @map("emitido_em") @db.Timestamptz(6)
+  /// O contrato do titular perde a vigência quando um repasse é aprovado.
+  substituidoEm DateTime? @map("substituido_em") @db.Timestamptz(6)
+
+  plantao     Plantao           @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
+  repasse     Repasse?          @relation(fields: [repasseId], references: [id], onDelete: Cascade)
+  assinaturas AssinaturaTermo[]
+
+  @@index([plantaoId])
+  @@map("termo")
+}
+
+model AssinaturaTermo {
+  id           String           @id @default(uuid()) @db.Uuid
+  termoId      String           @map("termo_id") @db.Uuid
+  papel        PapelNoTermo
+  usuarioId    String?          @map("usuario_id") @db.Uuid
+  /// Nome e registro como estavam na assinatura — o termo não muda com o cadastro.
+  nome         String
+  registro     String?
+  metodo       MetodoAssinatura @default(ACEITE_NO_APP)
+  /// A ação que valeu como assinatura (DEC-185), para quem lê o termo.
+  acao         String
+  assinadaEm   DateTime         @map("assinada_em") @db.Timestamptz(6)
+  /// O hash do conteúdo que esta assinatura cobre.
+  hashAssinado String           @map("hash_assinado") @db.Char(64)
+
+  termo Termo @relation(fields: [termoId], references: [id], onDelete: Cascade)
+
+  /// Cada papel assina uma vez.
+  @@unique([termoId, papel])
+  @@map("assinatura_termo")
 }

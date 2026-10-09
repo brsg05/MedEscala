@@ -14,6 +14,7 @@ import { EscalaService, type PlantaoCompleto } from '../escala/escala.service';
 import { InstituicaoService } from '../escala/instituicao.service';
 import { podeTransicionar } from '../escala/domain/plantao.state';
 import { NotificacaoService } from '../notificacao/notificacao.service';
+import { TermoService } from '../termos/termo.service';
 import { descreverPlantao } from '../notificacao/textos';
 import { FilaDeConvitesService } from '../repasse/fila-de-convites.service';
 import {
@@ -62,6 +63,7 @@ export class ExecucaoService {
     private readonly escala: EscalaService,
     private readonly instituicao: InstituicaoService,
     private readonly fila: FilaDeConvitesService,
+    private readonly termos: TermoService,
   ) {}
 
   // --- executante -------------------------------------------------------------
@@ -101,6 +103,14 @@ export class ExecucaoService {
         },
         tx,
       );
+      // DEC-185 — na escala direta, o check-in é o aceite do contrato.
+      if (plantao.medicoExecutanteId !== null) {
+        await this.termos.aceitarNoCheckin(tx, plantaoId, plantao.medicoExecutanteId, {
+          usuarioId: usuario.id,
+          acao: 'Fez check-in',
+          em: agora,
+        });
+      }
     });
 
     return this.resposta(plantaoId);

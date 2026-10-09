@@ -19,6 +19,7 @@ import { respeitaAntecedenciaMinima } from '../escala/domain/agenda.rules';
 import { EM_ABERTO, podeTransicionar } from './domain/repasse.state';
 import { FilaDeConvitesService } from './fila-de-convites.service';
 import { NotificacaoService } from '../notificacao/notificacao.service';
+import { TermoService } from '../termos/termo.service';
 import { descreverPlantao } from '../notificacao/textos';
 
 const RESUMO_MEDICO = { include: { usuario: { select: { nome: true } } } } as const;
@@ -72,6 +73,7 @@ export class RepasseService {
     private readonly escala: EscalaService,
     private readonly fila: FilaDeConvitesService,
     private readonly notificacoes: NotificacaoService,
+    private readonly termos: TermoService,
   ) {}
 
   /**
@@ -340,11 +342,12 @@ export class RepasseService {
     }
 
     const substitutoId = repasse.medicoSubstitutoId;
+    const aprovadoEm = new Date();
 
     await this.prisma.$transaction(async (tx) => {
       await tx.repasse.update({
         where: { id: repasseId },
-        data: { status: 'APROVADO', aprovadoPorId: aprovadorUsuarioId, aprovadoEm: new Date() },
+        data: { status: 'APROVADO', aprovadoPorId: aprovadorUsuarioId, aprovadoEm },
       });
 
       // A troca do executante — o único ponto do sistema que faz isto.
@@ -389,6 +392,13 @@ export class RepasseService {
         },
         tx,
       );
+
+      // F13 — a terceira assinatura fecha o termo de substituição (DEC-184).
+      await this.termos.emitirSubstituicao(tx, repasseId, {
+        usuarioId: aprovadorUsuarioId,
+        acao: 'Aprovou a substituição',
+        em: aprovadoEm,
+      });
 
       const nomeSubstituto = repasse.substituto?.usuario.nome ?? 'O substituto';
 

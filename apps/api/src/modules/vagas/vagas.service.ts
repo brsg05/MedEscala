@@ -252,9 +252,22 @@ export class VagasService {
     const inst = plantao.escala.setor.unidade.instituicao;
     const nome = await this.nomeDoMedico(medico.id);
 
+    // Quem convidou pela fila assina pela instituição (DEC-185).
+    const convidou = await this.prisma.eventoAuditoria.findFirst({
+      where: { entidade: 'Plantao', entidadeId: plantaoId, acao: 'CONVITES_DA_VAGA' },
+      orderBy: { id: 'desc' },
+      select: { atorId: true, ocorridoEm: true },
+    });
+
     const resposta = await this.atribuicao.escalarMedico(plantaoId, medico.id, usuario.id, {
       // Ele mesmo aceitou: avisá-lo de que foi escalado seria eco.
       avisarMedico: false,
+      aceiteDaInstituicao: {
+        usuarioId: convidou?.atorId ?? null,
+        acao: 'Convidou o médico pela fila',
+        em: convidou?.ocorridoEm ?? new Date(),
+      },
+      aceiteDoMedico: { usuarioId: usuario.id, acao: 'Aceitou o convite', em: new Date() },
       dentroDaTransacao: async (tx) => {
         await tx.convite.update({
           where: { id: convite.id },
@@ -460,11 +473,27 @@ export class VagasService {
     const plantao = await this.escala.buscarPlantao(c.plantaoId);
     this.exigirAberta(plantao);
 
+    const candidato = await this.prisma.medico.findUniqueOrThrow({
+      where: { id: c.medicoId },
+      select: { usuarioId: true },
+    });
+
     const ativos: { id: string }[] = [];
     const resposta = await this.atribuicao.escalarMedico(c.plantaoId, c.medicoId, usuario.id, {
       instituicoesDoAtor: instituicoesComPerfil(usuario, ...PAPEIS_DA_VAGA),
       // O aviso dele é o da candidatura, que diz mais que "você foi escalado".
       avisarMedico: false,
+      aceiteDaInstituicao: {
+        usuarioId: usuario.id,
+        acao: 'Escolheu a candidatura',
+        em: new Date(),
+      },
+      // Candidatar-se é aceitar os termos da vaga publicada (DEC-185).
+      aceiteDoMedico: {
+        usuarioId: candidato.usuarioId,
+        acao: 'Candidatou-se à vaga',
+        em: c.criadaEm,
+      },
       dentroDaTransacao: async (tx) => {
         ativos.push(...(await this.fecharSelecao(tx, plantao, c.medicoId)));
         await this.notificacoes.notificar(tx, [{ medicoId: c.medicoId }], {

@@ -559,7 +559,8 @@ POST   /plantoes/:id/contestacao/resposta     (executante, uma vez)
 POST   /plantoes/:id/contestacao/resolucao    (chefia: IMPROCEDENTE ou PROCEDENTE — ADR-020)
 POST   /plantoes/:id/avaliacoes          F18
 
-GET    /plantoes/:id/contrato            F13  (PDF)
+GET    /plantoes/:id/termos              F13  (contrato e termo de substituição, com assinaturas)
+GET    /termos/:id/pdf                        (PDF gerado do retrato congelado — DEC-187)
 GET    /plantoes/:id/documento-fiscal    F14  (rascunho SIMULADO)
 GET    /plantoes/:id/auditoria           F23
 
@@ -652,7 +653,9 @@ Sprints de duas semanas. Todo item tem critério de aceite **verificável por te
     da mesma transação compartilham o carimbo de tempo e ele não desempataria
 
 ### Sprint 4 — Formalização e fechamento
-- [ ] Contrato em PDF (F13)
+- [x] Contrato em PDF (F13) — contrato do plantão e termo de substituição (DEC-184 a DEC-187)
+  → *verificado:* o hash recalculado do conteúdo guardado confere; o banco recusa alterar o
+    termo; na escala direta o check-in completa a assinatura; quem não participa recebe 404
 - [ ] Rascunho fiscal com retenções (F14, simulado)
   → *verificar:* IRRF 1,5% e demais retenções conferem com cálculo manual
 - [x] Confirmação de execução (F16) — check-in, check-out, contestação (DEC-130 a DEC-134)

@@ -11,6 +11,13 @@
  */
 import { PrismaClient, Perfil } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
+import type { Prisma } from '@prisma/client';
+import {
+  hashDe,
+  montarContrato,
+  registroDeCnpj,
+  registroDeCrm,
+} from '../src/modules/termos/domain/conteudo';
 
 const prisma = new PrismaClient();
 
@@ -293,13 +300,92 @@ async function semearDemonstracao(unidadeId: string): Promise<void> {
     return escala.id;
   }
 
+  // F13 — os plantões da demonstração nascem com contrato, como na escala de
+  // verdade: a chefia assinou ao escalar; a Ana, no check-in (DEC-185).
+  const local = await prisma.setor.findUniqueOrThrow({
+    where: { id: setor.id },
+    include: { unidade: { include: { instituicao: true } } },
+  });
+  const inst = local.unidade.instituicao;
+  const chefia = await prisma.usuario.findUniqueOrThrow({
+    where: { email: 'chefia@medescala.test' },
+  });
+  const anaUsuario = await prisma.usuario.findUniqueOrThrow({ where: { id: ana.usuarioId } });
+
+  async function contrato(p: { id: string; inicio: Date; fim: Date; checkinEm?: Date }) {
+    const emitidoEm = new Date(p.inicio.getTime() - 7 * 86_400_000);
+    const medico = {
+      papel: 'MEDICO' as const,
+      nome: anaUsuario.nome,
+      registro: registroDeCrm(ana.crm, ana.crmUf),
+    };
+    const instituicao = {
+      papel: 'INSTITUICAO' as const,
+      nome: inst.nome,
+      registro: registroDeCnpj(inst.cnpj),
+    };
+    const conteudo = montarContrato({
+      plantao: {
+        id: p.id,
+        setor: local.nome,
+        unidade: local.unidade.nome,
+        instituicao: inst.nome,
+        inicio: p.inicio.toISOString(),
+        fim: p.fim.toISOString(),
+        valorCentavos: 140_000,
+        especialidade: 'Clínica Médica',
+        modeloContratacao: 'PJ',
+      },
+      medico,
+      instituicao,
+      prazoContestacaoHoras: inst.prazoContestacaoHoras,
+      emitidoEm,
+    });
+    const hash = hashDe(conteudo);
+    await prisma.termo.create({
+      data: {
+        tipo: 'CONTRATO_PLANTAO',
+        plantaoId: p.id,
+        conteudo: conteudo as unknown as Prisma.InputJsonValue,
+        hash,
+        emitidoEm,
+        assinaturas: {
+          create: [
+            {
+              papel: 'INSTITUICAO',
+              usuarioId: chefia.id,
+              nome: instituicao.nome,
+              registro: instituicao.registro,
+              acao: 'Escalou o médico',
+              assinadaEm: emitidoEm,
+              hashAssinado: hash,
+            },
+            ...(p.checkinEm === undefined
+              ? []
+              : [
+                  {
+                    papel: 'MEDICO' as const,
+                    usuarioId: anaUsuario.id,
+                    nome: medico.nome,
+                    registro: medico.registro,
+                    acao: 'Fez check-in',
+                    assinadaEm: p.checkinEm,
+                    hashAssinado: hash,
+                  },
+                ]),
+          ],
+        },
+      },
+    });
+  }
+
   async function plantao(
     inicio: Date,
     horas: number,
     status: 'CONFIRMADO' | 'EM_REPASSE' | 'EXECUTADO',
     execucao: { checkinEm?: Date; checkoutEm?: Date; contestavelAte?: Date } = {},
   ): Promise<{ id: string }> {
-    return prisma.plantao.create({
+    const criado = await prisma.plantao.create({
       data: {
         escalaId: await escalaDe(inicio),
         inicio,
@@ -313,8 +399,13 @@ async function semearDemonstracao(unidadeId: string): Promise<void> {
         status,
         ...execucao,
       },
-      select: { id: true },
+      select: { id: true, inicio: true, fim: true },
     });
+    await contrato({
+      ...criado,
+      ...(execucao.checkinEm === undefined ? {} : { checkinEm: execucao.checkinEm }),
+    });
+    return criado;
   }
 
   // Anteontem — cumprido, com check-in e check-out, ainda contestável pela

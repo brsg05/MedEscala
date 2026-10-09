@@ -289,3 +289,30 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | ID | Decisão | Origem | Motivo | Ref. |
 |---|---|---|---|---|
 | DEC-183 | Em rota fora de um modo (Conta), a navegação e o seletor mostram **o último modo usado** | Claude | Correção: em Conta as outras abas sumiam e só saindo da conta se voltava | DEC-078, DEC-079 |
+| DEC-192 | Todo diálogo (`Painel`) é renderizado **num portal, direto no `<body>`** | Claude | Correção: o painel de avisos, aberto de dentro do cabeçalho com `backdrop-filter`, ficava preso a ele e vazava da tela | DEC-084 |
+
+## 2026-10-09 — Sprint 4: termo e fluxo financeiro
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-184 | F13 gera **dois documentos**: termo de substituição (repasse aprovado, três partes) e contrato do plantão (médico escalado e instituição) | Breno, sobre recomendação | Mesmo gerador, dois modelos | — |
+| DEC-185 | **A ação é a assinatura**: pedir o repasse, aceitar e aprovar (ou escalar e aceitar a vaga) viram assinaturas com data/hora e hash do conteúdo | Breno | `provisória`: o Breno avalia que isso não se sustenta na vida real; a assinatura guarda o **método** (`ACEITE_NO_APP`) para trocar por gov.br/ICP-Brasil depois (DEC-122) sem refazer o termo | DEC-122 |
+| DEC-186 | PDF gerado **no servidor com pdfkit** | Breno, sobre recomendação | Leve, sem navegador embutido; funciona em serverless | — |
+| DEC-187 | Guarda-se o **retrato do conteúdo (JSON canônico) + hash SHA-256** na última assinatura; o PDF é gerado sob demanda a partir do retrato | Breno, sobre recomendação | O termo não muda se o cadastro mudar depois; o PDF sai sempre igual | — |
+| DEC-188 | A cobrança nasce **quando o plantão é cumprido** (EXECUTADO): a instituição paga e o valor fica RETIDO | Breno, sobre recomendação | Só se cobra o que aconteceu | F15, F17 |
+| DEC-189 | O valor retido é **liberado ao fim do prazo de contestação**, ou quando a contestação é julgada improcedente; o plantão vira LIQUIDADO | Breno, sobre recomendação | Liga a garantia (F15) à F16 | DEC-132 |
+| DEC-190 | **Sem taxa da plataforma no MVP**: o split existe, com a parte da plataforma em 0% | Breno, sobre recomendação | Não inventar modelo de negócio | F17 |
+| DEC-191 | Contestação procedente: **estorno integral à instituição** | Breno, sobre recomendação | — | DEC-134 |
+
+## 2026-10-09 — F13: termos contratuais
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-193 | Na escala direta, o contrato nasce com a assinatura da instituição e o **check-in vale como aceite do médico** | Breno, sobre recomendação | Na escala direta o médico não faz ação nenhuma (DEC-074) | DEC-185 |
+| DEC-194 | Quem assina pela instituição: quem **escalou**, quem **escolheu a candidatura** ou quem **convidou pela fila**; pelo médico: **candidatar-se** ou **aceitar o convite** | Claude | Leitura da DEC-185 para cada caminho da F10 | DEC-185 |
+| DEC-195 | Na aprovação de um repasse, os termos vigentes do plantão ficam **substituídos**; o termo de substituição passa a valer como contrato do substituto | Claude | Um plantão tem um responsável por vez (RN01) | — |
+| DEC-196 | Termo **imutável no banco** depois de emitido (trigger); assinatura não se edita; o banco confere que a assinatura cobre o hash do termo | Claude | O valor do termo é não mudar (DEC-187) | ADR-007 |
+| DEC-197 | Leem o termo: os médicos do plantão (titular, executante, partes de um repasse) e admin ou chefia da instituição; os demais recebem 404 | Claude | ADR-026 | ADR-026 |
+| DEC-198 | **Texto das cláusulas escrito pelo Claude**, com versão do modelo no termo — **precisa de revisão jurídica** antes de qualquer uso real | Claude | `provisória`: é simulação; a versão permite trocar o texto sem tocar nos termos já emitidos | DEC-185 |
+| DEC-199 | PDF com a fonte Helvetica padrão (sem arquivo de fonte no servidor); a data do PDF é a da emissão, não a do download | Claude | — | DEC-186 |
+| DEC-200 | O seed cria os contratos dos plantões da Ana; o CORS expõe `Content-Disposition` para o web ler o nome do PDF | Claude | — | — |

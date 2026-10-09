@@ -82,7 +82,9 @@ de novo atualiza as datas.
    antes do início) e depois **Fazer check-out**. Como `chefia@` → Escala: ontem aparece
    **sem confirmação** (confirme ou conteste); anteontem está cumprido e ainda
    **contestável**. A Ana responde à contestação pela própria Escala, e a chefia decide.
-   Os avisos de cada passo chegam pelo **sino** no topo.
+   Os avisos de cada passo chegam pelo **sino** no topo. Em qualquer plantão escalado,
+   **Termos** mostra o contrato (e, depois de um repasse aprovado, o termo de substituição)
+   com as assinaturas e o PDF.
 6. **Cadastro aberto e verificação.** Na tela de entrada, **Criar conta** → "Represento uma
    instituição". A instituição nasce pendente e não publica vaga. Entre como `operador@` →
    **Verificações** → aprove.
