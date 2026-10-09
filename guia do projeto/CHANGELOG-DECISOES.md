@@ -198,3 +198,5 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | DEC-116 | Commits iniciais **direto na `main`**, separados por tema | Breno | Primeiro envio do que existia só na máquina | — |
 | DEC-117 | Mensagens de commit em **inglês**, Conventional Commits, **até 2 linhas** | Breno | Fecha a pergunta do idioma deixada em aberto no planejamento | §12 |
 | DEC-118 | `.claude/settings.json` **fica fora** do repositório | Claude | Guarda só permissões pontuais desta máquina, sem valor para a equipe | — |
+| DEC-119 | `.gitattributes` com **`eol=lf`** para todo arquivo de texto | Breno, sobre recomendação | O Prettier exige LF; clone no Windows com `core.autocrlf=true` receberia CRLF e falharia no `pnpm verify` | — |
+| DEC-120 | Commits **sem** linha de coautoria (`Co-Authored-By`) | Breno | — | — |
