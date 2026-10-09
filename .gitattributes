@@ -1,2 +1,10 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Normaliza texto e força LF na cópia de trabalho em qualquer SO: o Prettier
+# exige LF (`endOfLine: "lf"`), e um clone no Windows com core.autocrlf=true
+# receberia CRLF e falharia no `pnpm verify` (DEC-119).
+* text=auto eol=lf
+
+# Binários explícitos — nunca converter.
+*.docx binary
+*.png  binary
+*.jpg  binary
+*.ico  binary
