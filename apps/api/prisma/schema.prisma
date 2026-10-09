@@ -1,0 +1,472 @@
+// =============================================================================
+// MedEscala — schema Prisma
+//
+// ADR-003: este arquivo é a fonte de verdade das TABELAS DE DOMÍNIO.
+//
+// O que NÃO mora aqui (e mora em supabase/migrations/*.sql):
+//   - RLS, policies e GRANTs (D4) — Prisma não tem abstração para eles;
+//   - a FK para `auth.users`, que é schema do Supabase e o Prisma não gerencia;
+//   - o índice único parcial de `perfil_acesso` (ver nota no modelo).
+//
+// ORDEM DE APLICAÇÃO (D3, footgun conhecido): `prisma migrate` pode recriar uma
+// tabela e derrubar as policies ligadas a ela. Sempre rodar, nesta ordem:
+//   1. pnpm db:migrate          (ou db:deploy em CI)
+//   2. pnpm db:policies         (SQL idempotente de supabase/migrations)
+// O CI verifica que as policies continuam ativas depois dos dois passos.
+//
+// Convenção do §12: domínio em português, infraestrutura em inglês.
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // Migrations precisam da conexão direta: o pooler do Supabase (6543) não
+  // suporta os prepared statements do Prisma.
+  directUrl = env("DIRECT_URL")
+}
+
+/// Perfis do ADR-006. Espelha `PERFIS` de @medescala/contracts — adicionar valor
+/// aqui exige adicionar lá, e vice-versa.
+enum Perfil {
+  MEDICO
+  CHEFIA_ESCALA
+  ADMIN_INSTITUICAO
+  OPERADOR_PLATAFORMA
+}
+
+/// Espelho local de `auth.users` do Supabase.
+///
+/// O `id` NÃO é gerado aqui: ele é o uuid que o Supabase Auth cria. O Supabase é
+/// dono da credencial (senha, confirmação de e-mail); esta tabela é dona do que é
+/// do domínio (nome, perfis). A FK para `auth.users(id)` é criada no SQL de policy.
+model Usuario {
+  id    String @id @db.Uuid
+  email String @unique
+  nome  String
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  perfis        PerfilAcesso[]
+  refreshTokens RefreshToken[]
+  medico        Medico?
+
+  @@map("usuario")
+}
+
+/// DEC-063: com cadastro aberto, a instituição nasce PENDENTE e só publica vaga
+/// ou enxerga médicos depois que o OPERADOR_PLATAFORMA confirma o CNPJ — a mesma
+/// lógica do CRM do médico (RN02).
+enum StatusInstituicao {
+  PENDENTE
+  ATIVA
+}
+
+/// Instituição de saúde. No Sprint 0 existe apenas para dar escopo ao perfil;
+/// o cadastro completo (F03 — CNES, unidades, setores) é do Sprint 1.
+model Instituicao {
+  id   String @id @default(uuid()) @db.Uuid
+  nome String
+  cnpj String @unique @db.VarChar(14)
+
+  /// RN08 fala em "prazo definido pela instituicao" — por isso configuravel, e
+  /// nao constante no codigo.
+  status          StatusInstituicao @default(PENDENTE)
+  verificadaEm    DateTime?         @map("verificada_em") @db.Timestamptz(6)
+  verificadaPorId String?           @map("verificada_por_id") @db.Uuid
+
+  antecedenciaMinimaRepasseHoras Int @default(24) @map("antecedencia_minima_repasse_horas")
+  validadeConviteHoras           Int @default(12) @map("validade_convite_horas")
+  /// DEC-090 — quanto tempo cada pessoa da fila de substitutos tem para responder.
+  prazoConviteRepasseMinutos     Int @default(60) @map("prazo_convite_repasse_minutos")
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  perfis   PerfilAcesso[]
+  unidades Unidade[]
+
+  @@map("instituicao")
+}
+
+/// Junção `Usuario` × `Instituicao` do §7.1: a mesma pessoa pode ser MEDICO numa
+/// instituição e CHEFIA_ESCALA em outra. `instituicaoId` é nulo para perfil sem
+/// escopo institucional (OPERADOR_PLATAFORMA).
+///
+/// NOTA DE INTEGRIDADE: o `@@unique` abaixo não impede duplicata quando
+/// `instituicaoId` é NULL, porque em Postgres NULLs não colidem em índice único.
+/// O índice único parcial que fecha esse furo está no SQL de policy.
+model PerfilAcesso {
+  id            String  @id @default(uuid()) @db.Uuid
+  usuarioId     String  @map("usuario_id") @db.Uuid
+  instituicaoId String? @map("instituicao_id") @db.Uuid
+  perfil        Perfil
+  ativo         Boolean @default(true)
+
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  usuario     Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  instituicao Instituicao? @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, instituicaoId, perfil])
+  @@index([usuarioId, ativo])
+  @@map("perfil_acesso")
+}
+
+/// Refresh token com rotação (D9).
+///
+/// Guardamos apenas o HASH — token em claro no banco anula o ganho do cookie
+/// httpOnly se o banco vazar. `familia` implementa detecção de reuso: se um token
+/// já rotacionado for apresentado de novo, é sinal de roubo e a família inteira é
+/// revogada, não só aquele token.
+model RefreshToken {
+  id        String @id @default(uuid()) @db.Uuid
+  usuarioId String @map("usuario_id") @db.Uuid
+  tokenHash String @unique @map("token_hash")
+  familia   String @db.Uuid
+
+  expiraEm   DateTime  @map("expira_em") @db.Timestamptz(6)
+  revogadoEm DateTime? @map("revogado_em") @db.Timestamptz(6)
+  criadoEm   DateTime  @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@index([familia])
+  @@index([expiraEm])
+  @@map("refresh_token")
+}
+
+/// Trilha de auditoria append-only (ADR-007, RNF04).
+///
+/// Duas decisões deliberadas:
+///
+/// 1. `id` é BigInt sequencial, não uuid. O critério de aceite do Sprint 3 é
+///    "a consulta devolve a SEQUÊNCIA EXATA de eventos" — dois eventos podem
+///    compartilhar o mesmo timestamp, uma sequência não empata. O valor é
+///    serializado como string na fronteira da API (BigInt não vai em JSON).
+///
+/// 2. `atorId` NÃO é uma relação Prisma. Uma FK com `onDelete: Cascade` apagaria
+///    eventos de auditoria junto com o usuário — exatamente o que append-only
+///    proíbe. O uuid é guardado solto, de propósito.
+///
+/// A imutabilidade não é garantida por código: o SQL de policy faz REVOKE de
+/// UPDATE e DELETE nesta tabela, e há teste que tenta os dois e espera erro do
+/// Postgres.
+model EventoAuditoria {
+  id BigInt @id @default(autoincrement())
+
+  ocorridoEm DateTime @default(now()) @map("ocorrido_em") @db.Timestamptz(6)
+
+  atorId     String? @map("ator_id") @db.Uuid
+  atorPerfil Perfil? @map("ator_perfil")
+
+  acao       String
+  entidade   String
+  entidadeId String? @map("entidade_id")
+
+  estadoAnterior String? @map("estado_anterior")
+  estadoNovo     String? @map("estado_novo")
+
+  payload Json?
+
+  @@index([entidade, entidadeId])
+  @@index([ocorridoEm])
+  @@index([atorId])
+  @@map("evento_auditoria")
+}
+
+// =============================================================================
+// Sprint 1-3 — credenciamento, escala e repasse
+// =============================================================================
+
+enum StatusPlantao {
+  ABERTO
+  EM_SELECAO
+  CONFIRMADO
+  EM_REPASSE
+  EM_EXECUCAO
+  EXECUTADO
+  LIQUIDADO
+  CONTESTADO
+  CANCELADO
+}
+
+enum StatusRepasse {
+  SOLICITADO
+  SUBSTITUTO_ACEITO
+  AGUARDANDO_APROVACAO
+  APROVADO
+  RECUSADO_SUBSTITUTO
+  RECUSADO_INSTITUICAO
+  CANCELADO
+}
+
+/// Quadro 3 da Entrega 1. Os modelos C (repasse entre pessoas fisicas) e D
+/// (Pix sem documento) NAO existem como valor possivel: informalidade nao e
+/// estado representavel no sistema.
+enum ModeloFiscal {
+  A_RECONTRATACAO
+  B_SUBCONTRATACAO
+}
+
+/// O paragrafo 7.2 do guia declarava isto como `String  // PJ | RPA`, destoando
+/// de todos os outros campos de estado. Virou enum: typo em string nao falha
+/// nada, e o modelo de contratacao decide qual retencao se aplica (Entrega 1,
+/// secao 5.3).
+enum ModeloContratacao {
+  PJ
+  RPA
+}
+
+enum RegimeTributario {
+  SIMPLES_NACIONAL
+  LUCRO_PRESUMIDO
+  LUCRO_REAL
+}
+
+/// F01 — cadastro e verificacao do medico.
+///
+/// `verificado` e preenchido por conferencia manual do OPERADOR_PLATAFORMA: o
+/// CFM nao expoe API publica, entao o MVP valida o CRM por formato e a
+/// regularidade e atestada por pessoa. A RN02 depende deste campo.
+model Medico {
+  id        String @id @default(uuid()) @db.Uuid
+  usuarioId String @unique @map("usuario_id") @db.Uuid
+
+  crm           String @db.VarChar(10)
+  crmUf         String @map("crm_uf") @db.Char(2)
+  especialidade String
+
+  verificado      Boolean   @default(false)
+  verificadoEm    DateTime? @map("verificado_em") @db.Timestamptz(6)
+  verificadoPorId String?   @map("verificado_por_id") @db.Uuid
+
+  // F02 — parte fiscal. Dados bancarios ficam para o Sprint 4, quando houver
+  // pagamento e a cifragem em repouso da RNF07 for de fato necessaria.
+  cnpj               String?           @db.VarChar(14)
+  regimeTributario   RegimeTributario? @map("regime_tributario")
+  inscricaoMunicipal String?           @map("inscricao_municipal")
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  usuario             Usuario                @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  disponibilidades    JanelaDisponibilidade[]
+  plantoesTitular     Plantao[]              @relation("PlantaoTitular")
+  plantoesExecutante  Plantao[]              @relation("PlantaoExecutante")
+  repassesSolicitados Repasse[]              @relation("RepasseTitular")
+  repassesRecebidos   Repasse[]              @relation("RepasseSubstituto")
+  convites            ConviteRepasse[]
+
+  @@unique([crm, crmUf])
+  @@index([verificado])
+  @@map("medico")
+}
+
+/// F04 — declarar disponibilidade. E o ponto de partida do produto: em vez de o
+/// medico cacar vagas em grupo de WhatsApp, ele declara quando pode trabalhar.
+model JanelaDisponibilidade {
+  id       String   @id @default(uuid()) @db.Uuid
+  medicoId String   @map("medico_id") @db.Uuid
+  inicio   DateTime @db.Timestamptz(6)
+  fim      DateTime @db.Timestamptz(6)
+
+  /// Valor minimo aceito para o plantao inteiro, em centavos (ADR-018).
+  valorMinimoCentavos Int? @map("valor_minimo_centavos")
+
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  medico Medico @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+
+  @@index([medicoId, inicio])
+  @@map("janela_disponibilidade")
+}
+
+/// F03 — unidades e setores da instituicao.
+model Unidade {
+  id            String  @id @default(uuid()) @db.Uuid
+  instituicaoId String  @map("instituicao_id") @db.Uuid
+  nome          String
+  /// Cadastro Nacional de Estabelecimentos de Saude. Sem consulta automatica no
+  /// MVP, embora o DataSUS publique dados abertos.
+  cnes          String? @db.VarChar(7)
+
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  instituicao Instituicao @relation(fields: [instituicaoId], references: [id], onDelete: Cascade)
+  setores     Setor[]
+
+  @@index([instituicaoId])
+  @@map("unidade")
+}
+
+model Setor {
+  id                   String @id @default(uuid()) @db.Uuid
+  unidadeId            String @map("unidade_id") @db.Uuid
+  nome                 String
+  especialidadeExigida String @map("especialidade_exigida")
+
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  unidade Unidade  @relation(fields: [unidadeId], references: [id], onDelete: Cascade)
+  escalas Escala[]
+
+  @@index([unidadeId])
+  @@map("setor")
+}
+
+/// F12 — escala oficial versionada.
+///
+/// O historico NAO fica numa tabela de snapshots: `versao` incrementa a cada
+/// alteracao e o historico completo e a propria `evento_auditoria`, que ja e
+/// append-only garantida por trigger (ADR-007). Um mecanismo so.
+model Escala {
+  id      String @id @default(uuid()) @db.Uuid
+  setorId String @map("setor_id") @db.Uuid
+  /// Competencia no formato AAAA-MM.
+  competencia String @db.VarChar(7)
+  versao      Int    @default(1)
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  setor    Setor     @relation(fields: [setorId], references: [id], onDelete: Cascade)
+  plantoes Plantao[]
+
+  @@unique([setorId, competencia])
+  @@map("escala")
+}
+
+/// F06 — vaga de plantao publicada, e o registro do turno na escala oficial.
+model Plantao {
+  id       String   @id @default(uuid()) @db.Uuid
+  escalaId String   @map("escala_id") @db.Uuid
+  inicio   DateTime @db.Timestamptz(6)
+  fim      DateTime @db.Timestamptz(6)
+
+  /// Em centavos (ADR-018) — nao `Decimal`, para nao haver conversao de float
+  /// no caminho ate o calculo de retencoes.
+  valorCentavos Int @map("valor_centavos")
+
+  especialidadeExigida String            @map("especialidade_exigida")
+  requisitos           String[]
+  modeloContratacao    ModeloContratacao @map("modelo_contratacao")
+
+  medicoTitularId String? @map("medico_titular_id") @db.Uuid
+
+  /// INVARIANTE CENTRAL (RN01): so muda dentro de `RepasseService.aprovar()`.
+  /// Nao e disciplina de codigo — ha trigger no Postgres que recusa qualquer
+  /// UPDATE deste campo sem um repasse APROVADO correspondente.
+  medicoExecutanteId String? @map("medico_executante_id") @db.Uuid
+
+  status StatusPlantao @default(ABERTO)
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  escala     Escala    @relation(fields: [escalaId], references: [id], onDelete: Cascade)
+  titular    Medico?   @relation("PlantaoTitular", fields: [medicoTitularId], references: [id])
+  executante Medico?   @relation("PlantaoExecutante", fields: [medicoExecutanteId], references: [id])
+  repasses   Repasse[]
+
+  @@index([inicio, status])
+  @@index([escalaId])
+  @@index([medicoExecutanteId])
+  @@map("plantao")
+}
+
+/// F07 / F11 — pedido de repasse e aprovacao institucional.
+///
+/// Diferente do recorte do paragrafo 7.2, `plantaoId` NAO e `@unique`: uma
+/// recusa devolve o repasse a SOLICITADO e o mesmo plantao pode acumular
+/// tentativas. Unicidade e garantida por indice parcial — no maximo um repasse
+/// em aberto por plantao.
+model Repasse {
+  id        String @id @default(uuid()) @db.Uuid
+  plantaoId String @map("plantao_id") @db.Uuid
+
+  medicoTitularId    String  @map("medico_titular_id") @db.Uuid
+  medicoSubstitutoId String? @map("medico_substituto_id") @db.Uuid
+
+  motivo       String
+  modeloFiscal ModeloFiscal  @default(A_RECONTRATACAO) @map("modelo_fiscal")
+  status       StatusRepasse @default(SOLICITADO)
+
+  /// Quando a fila e o matching acabaram sem ninguém aceitar. O repasse volta ao
+  /// titular (DEC-096); a marca evita registrar o esgotamento mais de uma vez.
+  filaEsgotadaEm DateTime? @map("fila_esgotada_em") @db.Timestamptz(6)
+
+  aprovadoPorId       String?   @map("aprovado_por_id") @db.Uuid
+  aprovadoEm          DateTime? @map("aprovado_em") @db.Timestamptz(6)
+  justificativaRecusa String?   @map("justificativa_recusa")
+
+  criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+  atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
+
+  plantao    Plantao @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
+  titular    Medico  @relation("RepasseTitular", fields: [medicoTitularId], references: [id])
+  substituto Medico? @relation("RepasseSubstituto", fields: [medicoSubstitutoId], references: [id])
+  convites   ConviteRepasse[]
+
+  @@index([plantaoId])
+  @@index([status])
+  @@map("repasse")
+}
+
+/// Estado de um convite na fila de substitutos (DEC-087 a DEC-099).
+enum StatusConvite {
+  /// Esperando a vez.
+  NA_FILA
+  /// É o convidado da vez; tem até `prazoAte` para responder.
+  ATIVO
+  ACEITO
+  RECUSADO
+  EXPIRADO
+  /// A fila parou antes de chegar nele: outro foi aprovado, o titular cancelou
+  /// ou o plantão começou.
+  CANCELADO
+}
+
+/// De onde veio o convite: escolha do titular (Forma 1) ou ranking (Forma 2).
+enum OrigemConvite {
+  INDICACAO
+  MATCHING
+}
+
+/// Fila de convites de um repasse.
+///
+/// A fila é a verdade (DEC-097): o prazo de cada convite mora aqui, e o job no
+/// Redis só serve para avançar a fila na hora certa. Qualquer leitura trata como
+/// vencido o convite ATIVO com prazo passado — se o Redis perder o job, a fila
+/// anda no próximo acesso em vez de travar.
+model ConviteRepasse {
+  id        String        @id @default(uuid()) @db.Uuid
+  repasseId String        @map("repasse_id") @db.Uuid
+  medicoId  String        @map("medico_id") @db.Uuid
+  /// Posição global na fila. Lotes do matching continuam a numeração.
+  ordem     Int
+  origem    OrigemConvite
+  status    StatusConvite @default(NA_FILA)
+
+  ativadoEm    DateTime? @map("ativado_em") @db.Timestamptz(6)
+  prazoAte     DateTime? @map("prazo_ate") @db.Timestamptz(6)
+  respondidoEm DateTime? @map("respondido_em") @db.Timestamptz(6)
+
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  repasse Repasse @relation(fields: [repasseId], references: [id], onDelete: Cascade)
+  medico  Medico  @relation(fields: [medicoId], references: [id])
+
+  /// Ninguém é convidado duas vezes para o mesmo repasse.
+  @@unique([repasseId, medicoId])
+  @@unique([repasseId, ordem])
+  @@index([medicoId, status])
+  @@index([status, prazoAte])
+  @@map("convite_repasse")
+}
+
