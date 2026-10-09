@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   titulo: string;
@@ -13,6 +14,11 @@ interface Props {
  * No celular a ação fica perto do polegar (RNF03). `Esc` fecha, o foco vai para o
  * primeiro campo ao abrir e volta para onde estava ao fechar — o mínimo para o
  * diálogo funcionar por teclado na estação da chefia.
+ *
+ * Renderiza num portal, direto no `<body>`: um ancestral com `backdrop-filter`
+ * ou `transform` vira o bloco de referência do `position: fixed`, e o diálogo
+ * ficava preso a ele — foi o que aconteceu com os avisos, abertos de dentro do
+ * cabeçalho borrado (DEC-192).
  */
 export function Painel({ titulo, aoFechar, children }: Props): React.JSX.Element {
   const idTitulo = useId();
@@ -46,7 +52,7 @@ export function Painel({ titulo, aoFechar, children }: Props): React.JSX.Element
     };
   }, []);
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -78,7 +84,8 @@ export function Painel({ titulo, aoFechar, children }: Props): React.JSX.Element
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

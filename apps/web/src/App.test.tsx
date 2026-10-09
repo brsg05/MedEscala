@@ -535,6 +535,9 @@ describe('avisos in-app (F22)', () => {
     render(<App />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Avisos, 1 não lido' }));
+    // O diálogo sai do cabeçalho: dentro dele (que tem backdrop-filter), o
+    // `position: fixed` ficava preso aos 56px do cabeçalho e vazava (DEC-192).
+    expect((await screen.findByRole('dialog')).closest('header')).toBeNull();
     fireEvent.click(await screen.findByRole('button', { name: /Convite para cobrir plantão/u }));
 
     expect(await screen.findByText('Nada esperando por você')).toBeDefined();
