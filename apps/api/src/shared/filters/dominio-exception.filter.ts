@@ -69,6 +69,10 @@ const STATUS_POR_CODIGO: Readonly<Record<string, number>> = {
   VAGA_NAO_ABERTA: HttpStatus.CONFLICT,
   CANDIDATURA_NAO_ENCONTRADA: HttpStatus.NOT_FOUND,
   CANDIDATURA_JA_RESPONDIDA: HttpStatus.CONFLICT,
+
+  // --- pagamento e nota fiscal (F14, F15, F17) ----------------------------------
+  DOCUMENTO_FISCAL_NAO_EMISSIVEL: HttpStatus.CONFLICT,
+  SUBCONTRATACAO_NAO_PERMITIDA: HttpStatus.UNPROCESSABLE_ENTITY,
 };
 
 @Catch(ErroDominio)

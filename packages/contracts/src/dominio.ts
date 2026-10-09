@@ -238,6 +238,8 @@ export const PlantaoResponse = z.strictObject({
     nome: z.string(),
     unidade: z.string(),
     instituicao: z.string(),
+    /** DEC-207 — o titular só vê o modelo B se a instituição habilitar. */
+    subcontratacaoPermitida: z.boolean(),
   }),
   titular: MedicoResumo.nullable(),
   executante: MedicoResumo.nullable(),
@@ -479,6 +481,8 @@ export const EstruturaResponse = z.strictObject({
   instituicao: InstituicaoResumo.extend({
     prazoConviteMinutos: z.number().int(),
     prazoContestacaoHoras: z.number().int(),
+    permiteSubcontratacao: z.boolean(),
+    issRetidoBp: z.number().int().nullable(),
   }),
   unidades: z.array(
     z.strictObject({
@@ -568,11 +572,18 @@ export const ConfiguracaoInstituicaoRequest = z
       .min(1, 'O prazo mínimo é de 1 hora')
       .max(336, 'O prazo máximo é de 14 dias')
       .optional(),
+    /** DEC-207 — habilita o modelo B no repasse. */
+    permiteSubcontratacao: z.boolean().optional(),
+    /** DEC-206 — ISS retido na fonte, em pontos-base (2% a 5%); nulo = sem retenção. */
+    issRetidoBp: z
+      .number()
+      .int()
+      .min(200, 'O ISS mínimo é de 2%')
+      .max(500, 'O ISS máximo é de 5%')
+      .nullable()
+      .optional(),
   })
-  .refine(
-    (c) => c.prazoConviteMinutos !== undefined || c.prazoContestacaoHoras !== undefined,
-    'Informe ao menos um prazo',
-  );
+  .refine((c) => Object.values(c).some((v) => v !== undefined), 'Informe ao menos um ajuste');
 export type ConfiguracaoInstituicaoRequest = z.infer<typeof ConfiguracaoInstituicaoRequest>;
 
 // --- F10 — vagas abertas para o médico (DEC-166, DEC-167) ---------------------

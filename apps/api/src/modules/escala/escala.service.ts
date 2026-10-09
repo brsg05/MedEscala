@@ -262,6 +262,7 @@ export class EscalaService {
         nome: setor.nome,
         unidade: setor.unidade.nome,
         instituicao: setor.unidade.instituicao.nome,
+        subcontratacaoPermitida: setor.unidade.instituicao.permiteSubcontratacao,
       },
       titular:
         p.titular === null

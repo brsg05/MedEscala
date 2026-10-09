@@ -13,6 +13,7 @@ import { useRecurso } from '@/hooks/useRecurso';
 import { ErroDeFormulario } from '@/componentes/Painel';
 import { ExecucaoDoPlantao } from '@/componentes/ExecucaoDoPlantao';
 import { BotaoTermos } from '@/componentes/Termos';
+import { BotaoPagamento } from '@/componentes/Pagamento';
 import { Button } from '@/componentes/ui/button';
 import { Etiqueta } from '@/componentes/ui/etiqueta';
 import {
@@ -292,7 +293,12 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
                 >
                   Trilha
                 </Button>
-                {p.executante !== null && <BotaoTermos plantaoId={p.id} />}
+                {p.executante !== null && (
+                  <>
+                    <BotaoTermos plantaoId={p.id} />
+                    <BotaoPagamento plantaoId={p.id} />
+                  </>
+                )}
               </div>
 
               {chefia && (

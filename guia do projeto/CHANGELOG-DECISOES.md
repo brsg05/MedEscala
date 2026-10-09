@@ -35,7 +35,6 @@ Decisões que ainda **não** foram tomadas e bloqueiam alguma parte do produto.
 | Retenção de dados (F24) | Prazos concretos | F24 mínima |
 | PaaS de deploy | Provavelmente **Vercel**, sem confirmação (DEC-125) | Entrega 5 |
 | Provedor de e-mail (F22) | A F22 começa só in-app (DEC-121) | Notificação por e-mail |
-| Forma dos mocks de integração | Como os serviços externos da DEC-122 ficam simulados (porta + adaptador falso, ou outra) | Primeira integração simulada |
 | Multi-tenant | Modelo de tenants que vai substituir o cadastro aberto (ver DEC-059) | Cadastro definitivo |
 
 ---
@@ -299,7 +298,7 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | DEC-185 | **A ação é a assinatura**: pedir o repasse, aceitar e aprovar (ou escalar e aceitar a vaga) viram assinaturas com data/hora e hash do conteúdo | Breno | `provisória`: o Breno avalia que isso não se sustenta na vida real; a assinatura guarda o **método** (`ACEITE_NO_APP`) para trocar por gov.br/ICP-Brasil depois (DEC-122) sem refazer o termo | DEC-122 |
 | DEC-186 | PDF gerado **no servidor com pdfkit** | Breno, sobre recomendação | Leve, sem navegador embutido; funciona em serverless | — |
 | DEC-187 | Guarda-se o **retrato do conteúdo (JSON canônico) + hash SHA-256** na última assinatura; o PDF é gerado sob demanda a partir do retrato | Breno, sobre recomendação | O termo não muda se o cadastro mudar depois; o PDF sai sempre igual | — |
-| DEC-188 | A cobrança nasce **quando o plantão é cumprido** (EXECUTADO): a instituição paga e o valor fica RETIDO | Breno, sobre recomendação | Só se cobra o que aconteceu | F15, F17 |
+| DEC-188 | A cobrança nasce **quando o plantão é cumprido** (EXECUTADO): a instituição paga e o valor fica RETIDO | Breno, sobre recomendação | Só se cobra o que aconteceu. **Revista pela DEC-201** | F15, F17 |
 | DEC-189 | O valor retido é **liberado ao fim do prazo de contestação**, ou quando a contestação é julgada improcedente; o plantão vira LIQUIDADO | Breno, sobre recomendação | Liga a garantia (F15) à F16 | DEC-132 |
 | DEC-190 | **Sem taxa da plataforma no MVP**: o split existe, com a parte da plataforma em 0% | Breno, sobre recomendação | Não inventar modelo de negócio | F17 |
 | DEC-191 | Contestação procedente: **estorno integral à instituição** | Breno, sobre recomendação | — | DEC-134 |
@@ -316,3 +315,26 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | DEC-198 | **Texto das cláusulas escrito pelo Claude**, com versão do modelo no termo — **precisa de revisão jurídica** antes de qualquer uso real | Claude | `provisória`: é simulação; a versão permite trocar o texto sem tocar nos termos já emitidos | DEC-185 |
 | DEC-199 | PDF com a fonte Helvetica padrão (sem arquivo de fonte no servidor); a data do PDF é a da emissão, não a do download | Claude | — | DEC-186 |
 | DEC-200 | O seed cria os contratos dos plantões da Ana; o CORS expõe `Content-Disposition` para o web ler o nome do PDF | Claude | — | — |
+| DEC-201 | **Segue a Entrega 1 (F15):** o valor é **pré-autorizado no aceite** (escala, candidatura, convite, repasse aprovado), **capturado e retido quando o plantão é cumprido** e cancelado/estornado se não for. Revisa a DEC-188 | Breno, sobre recomendação | A Entrega 1 prevalece; a garantia de recebimento é dor citada no diagnóstico | DEC-188 |
+| DEC-202 | NFS-e sem sair do app: **o médico emite com um toque** a partir do rascunho pronto; **se não emitir até o fim do prazo de contestação, a plataforma emite sozinha**. A liberação exige nota emitida e prazo encerrado (F17: "liberação vinculada ao documento fiscal") | Breno | O produto é um intermediário que faz as tarefas chatas; na vida real, exige procuração/certificado do médico (DEC-122) | F14, F17 |
+| DEC-203 | **Modelo B com duas pernas** — instituição→titular e titular→substituto, cada uma com pagamento e NFS-e simulados —, **com alerta** sobre a dupla tributação antes da escolha | Breno, sobre recomendação | Fiel ao Quadro 3 da Entrega 1; a dupla tributação só se atenua (Lucro Real; IBS/CBS a partir de 2027) e não se elimina no Simples/Presumido | Quadro 3 |
+| DEC-204 | Integrações externas como **porta (interface) + adaptador simulado**: gateway de pagamento e emissor de NFS-e. Trocar pelo real é trocar o adaptador | Claude | Fecha a pergunta em aberto sobre a forma dos mocks (DEC-122); é o que permite "simular a integração futura" (DEC-202) | DEC-122 |
+| DEC-205 | Retenções do rascunho fiscal (F14) em **tabela versionada por vigência**, com fonte: IRRF 1,5% (RIR/2018; dispensa se ≤ R$ 10 — Lei 9.430/96, art. 67) e PIS/COFINS/CSLL 4,65% (Lei 10.833/03; dispensa se ≤ R$ 10 — Lei 13.137/15); **não se retém de prestador optante do Simples** (IN SRF 765/2007; IN SRF 459/2004) | Claude | Recomendação do guia (§3.2) e regra do §16: nenhum número sem fonte | F14 |
+| DEC-206 | **ISS retido**: alíquota configurada pela instituição (2% a 5%), ou sem retenção; **RPA não é simulado** (INSS e IRRF da pessoa física dependem de tabela sem fonte registrada aqui) — o rascunho diz isso | Claude | A Entrega 1 não fixa ISS nem RPA; inventar seria pior que declarar | DEC-205 |
+| DEC-207 | Modelo B só aparece para o titular quando a **instituição habilita** a subcontratação | Claude | O guia já previa ("só se a instituição habilitar"); a Entrega 1 diz "alternativa configurável" | Quadro 3 |
+
+## 2026-10-09 — F14, F15, F17: pagamento e nota simulados
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-208 | As chamadas ao gateway e ao emissor acontecem **dentro da transação** do banco | Claude | `provisória`: aceitável com o adaptador simulado, que não falha; com o real, viram outbox (o efeito externo depois do commit, com reprocessamento) | DEC-204 |
+| DEC-209 | Quem vê o financeiro: o médico vê as pernas em que **paga ou recebe**; a instituição vê a **perna principal**; os demais recebem 404. A perna B é entre médicos | Claude | ADR-026 | ADR-026 |
+| DEC-210 | A reserva é do que **passa pela plataforma** — bruto menos retenções na fonte, mais a taxa (zero) — e é recalculada na captura pela regra do dia | Claude | As retenções a instituição recolhe ao fisco, não ao médico (F17) | DEC-205 |
+| DEC-211 | Plantão confirmado pela instituição (sem prazo de contestação): o médico ainda tem o **prazo padrão para emitir** a nota; contestação improcedente libera **na hora** — o pagamento já atrasou pela contestação | Claude | Leitura da DEC-202 para os dois caminhos sem janela | DEC-202 |
+| DEC-212 | A liberação exige NFS-e emitida **no banco** (trigger), não só no código; o split também fecha no banco (bruto = retido + taxa + líquido) | Claude | Mesma linha da RN01: regra financeira não depende de disciplina | F17 |
+| DEC-213 | Na perna B, **não há ISS retido** (o município da PJ do titular não está modelado); tomador optante do Simples **não retém** PIS/COFINS/CSLL | Claude | Simplificação declarada no rascunho | DEC-206 |
+| DEC-214 | O plantão vira **LIQUIDADO** quando todas as pernas são liberadas; a liberação roda no job recorrente (60s) e em cada leitura do financeiro | Claude | DEC-097: o Postgres decide, o Redis acelera | DEC-158 |
+| DEC-215 | A nota só pode ser emitida com o plantão **cumprido e fora de contestação** | Claude | Evita emitir e cancelar a mesma nota | DEC-202 |
+| DEC-216 | Prestador na nota: **CNPJ do médico** quando cadastrado (F02), senão o CRM | Claude | NFS-e é de pessoa jurídica; sem CNPJ, o rascunho avisa dos dados incompletos | F02 |
+| DEC-217 | Seed: o hospital da demonstração **aceita o modelo B**; os plantões da Ana nascem com reserva, e o de anteontem com valor retido e rascunho de nota | Claude | A demonstração precisa mostrar o fluxo | — |
+| DEC-218 | O cancelamento de uma reserva (modelo A, contestação) também **entra na trilha** | Claude | ADR-007: toda transição de domínio é registrada | ADR-007 |

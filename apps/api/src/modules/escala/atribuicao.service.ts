@@ -5,6 +5,7 @@ import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { NotificacaoService } from '../notificacao/notificacao.service';
 import { TermoService, type Aceite } from '../termos/termo.service';
+import { FinanceiroService } from '../financeiro/financeiro.service';
 import { descreverPlantao } from '../notificacao/textos';
 import {
   ForaDoEscopoDaInstituicaoError,
@@ -34,6 +35,7 @@ export class AtribuicaoService {
     private readonly escala: EscalaService,
     private readonly notificacoes: NotificacaoService,
     private readonly termos: TermoService,
+    private readonly financeiro: FinanceiroService,
   ) {}
 
   /**
@@ -153,6 +155,9 @@ export class AtribuicaoService {
         },
         opcoes.aceiteDoMedico ?? null,
       );
+
+      // F15 — a garantia nasce com o aceite: a instituição reserva o valor (DEC-201).
+      await this.financeiro.aoEscalar(tx, plantaoId, medicoId);
 
       if (opcoes.avisarMedico === false) {
         return p;

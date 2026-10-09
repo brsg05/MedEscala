@@ -80,12 +80,17 @@ model Instituicao {
   verificadaEm    DateTime?         @map("verificada_em") @db.Timestamptz(6)
   verificadaPorId String?           @map("verificada_por_id") @db.Uuid
 
-  antecedenciaMinimaRepasseHoras Int @default(24) @map("antecedencia_minima_repasse_horas")
+  antecedenciaMinimaRepasseHoras Int     @default(24) @map("antecedencia_minima_repasse_horas")
   /// DEC-090, DEC-165 — quanto tempo cada convidado da fila tem para responder,
   /// em repasse ou em vaga.
-  prazoConviteMinutos            Int @default(60) @map("prazo_convite_minutos")
+  prazoConviteMinutos            Int     @default(60) @map("prazo_convite_minutos")
   /// DEC-132 — até quando a instituição contesta um check-out. Padrão 72h.
-  prazoContestacaoHoras          Int @default(72) @map("prazo_contestacao_horas")
+  prazoContestacaoHoras          Int     @default(72) @map("prazo_contestacao_horas")
+  /// DEC-207 — o modelo B (subcontratação) só existe se a instituição habilitar.
+  permiteSubcontratacao          Boolean @default(false) @map("permite_subcontratacao")
+  /// DEC-206 — ISS que o município manda a instituição reter, em pontos-base
+  /// (500 = 5%). Nulo: sem retenção na fonte.
+  issRetidoBp                    Int?    @map("iss_retido_bp")
 
   criadoEm     DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
   atualizadoEm DateTime @updatedAt @map("atualizado_em") @db.Timestamptz(6)
@@ -387,6 +392,7 @@ model Plantao {
   convites     Convite[]
   candidaturas Candidatura[]
   termos       Termo[]
+  pagamentos   Pagamento[]
 
   escala     Escala    @relation(fields: [escalaId], references: [id], onDelete: Cascade)
   titular    Medico?   @relation("PlantaoTitular", fields: [medicoTitularId], references: [id])
@@ -520,6 +526,11 @@ enum TipoNotificacao {
   CANDIDATURA_RECUSADA
   CANDIDATURA_ENCERRADA
   VAGA_PREENCHIDA
+  // pagamento e nota (F14, F15, F17)
+  NFSE_PRONTA_PARA_EMITIR
+  NFSE_EMITIDA
+  PAGAMENTO_LIBERADO
+  PAGAMENTO_ESTORNADO
   // escala e execução (F16)
   MEDICO_ESCALADO
   CHECKIN_LIBERADO
@@ -690,4 +701,108 @@ model AssinaturaTermo {
   /// Cada papel assina uma vez.
   @@unique([termoId, papel])
   @@map("assinatura_termo")
+}
+
+// --- F14, F15, F17 — pagamento com garantia, split e NFS-e simulados -----------
+
+/// Modelo A tem uma perna (instituição → executante). Modelo B tem duas
+/// (instituição → titular e titular → substituto) — DEC-203.
+enum PernaPagamento {
+  PRINCIPAL
+  SUBCONTRATACAO
+}
+
+/// DEC-201: pré-autoriza no aceite, captura (retém) ao cumprir, libera depois
+/// do prazo de contestação e da nota (DEC-202). Cancelado: a pré-autorização
+/// caiu antes de cumprir (ex.: repasse aprovado no modelo A). Estornado: o
+/// valor capturado voltou à pagadora (contestação procedente, DEC-191).
+enum StatusPagamento {
+  PRE_AUTORIZADO
+  RETIDO
+  LIBERADO
+  CANCELADO
+  ESTORNADO
+}
+
+model Pagamento {
+  id        String         @id @default(uuid()) @db.Uuid
+  plantaoId String         @map("plantao_id") @db.Uuid
+  perna     PernaPagamento
+
+  /// Quem paga: a instituição (perna principal) ou o titular (perna B).
+  pagadorInstituicaoId String? @map("pagador_instituicao_id") @db.Uuid
+  pagadorMedicoId      String? @map("pagador_medico_id") @db.Uuid
+  beneficiarioMedicoId String  @map("beneficiario_medico_id") @db.Uuid
+
+  valorBrutoCentavos     Int @map("valor_bruto_centavos")
+  /// O que a pagadora retém e recolhe ao fisco (F14); o resto passa pelo split.
+  retidoCentavos         Int @default(0) @map("retido_centavos")
+  /// DEC-190: zero no MVP; o split já separa a parte da plataforma.
+  taxaPlataformaCentavos Int @default(0) @map("taxa_plataforma_centavos")
+  liquidoCentavos        Int @map("liquido_centavos")
+
+  status            StatusPagamento @default(PRE_AUTORIZADO)
+  referenciaGateway String          @map("referencia_gateway")
+
+  preAutorizadoEm DateTime  @default(now()) @map("pre_autorizado_em") @db.Timestamptz(6)
+  retidoEm        DateTime? @map("retido_em") @db.Timestamptz(6)
+  /// A partir de quando a plataforma emite a nota (se o médico não emitiu) e libera.
+  liberavelEm     DateTime? @map("liberavel_em") @db.Timestamptz(6)
+  liberadoEm      DateTime? @map("liberado_em") @db.Timestamptz(6)
+  canceladoEm     DateTime? @map("cancelado_em") @db.Timestamptz(6)
+  estornadoEm     DateTime? @map("estornado_em") @db.Timestamptz(6)
+
+  plantao         Plantao          @relation(fields: [plantaoId], references: [id], onDelete: Cascade)
+  documentoFiscal DocumentoFiscal?
+
+  @@index([plantaoId])
+  @@index([status, liberavelEm])
+  @@map("pagamento")
+}
+
+enum StatusDocumentoFiscal {
+  RASCUNHO
+  EMITIDA
+  CANCELADA
+}
+
+enum OrigemDaEmissao {
+  /// O médico tocou em "Emitir" (DEC-202).
+  MEDICO
+  /// Fim do prazo sem emissão: a plataforma emitiu (DEC-202).
+  AUTOMATICA
+}
+
+/// NFS-e SIMULADA (F14, DEC-122): rascunho com as retenções, emitida pelo
+/// adaptador simulado do emissor (DEC-204). Prestador e tomador são retratos.
+model DocumentoFiscal {
+  id          String @id @default(uuid()) @db.Uuid
+  pagamentoId String @unique @map("pagamento_id") @db.Uuid
+
+  prestadorMedicoId String @map("prestador_medico_id") @db.Uuid
+  prestadorNome     String @map("prestador_nome")
+  prestadorRegistro String @map("prestador_registro")
+  tomadorNome       String @map("tomador_nome")
+  tomadorRegistro   String @map("tomador_registro")
+  discriminacao     String
+
+  valorServicoCentavos Int      @map("valor_servico_centavos")
+  /// Linhas de retenção calculadas pela regra vigente (DEC-205).
+  retencoes            Json
+  observacoes          String[]
+  valorLiquidoCentavos Int      @map("valor_liquido_centavos")
+
+  status            StatusDocumentoFiscal @default(RASCUNHO)
+  numero            String?
+  codigoVerificacao String?               @map("codigo_verificacao")
+  emitidaEm         DateTime?             @map("emitida_em") @db.Timestamptz(6)
+  emitidaPor        OrigemDaEmissao?      @map("emitida_por")
+  canceladaEm       DateTime?             @map("cancelada_em") @db.Timestamptz(6)
+
+  criadoEm DateTime @default(now()) @map("criado_em") @db.Timestamptz(6)
+
+  pagamento Pagamento @relation(fields: [pagamentoId], references: [id], onDelete: Cascade)
+
+  @@index([prestadorMedicoId, status])
+  @@map("documento_fiscal")
 }

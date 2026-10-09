@@ -6,6 +6,7 @@ import { Button } from '@/componentes/ui/button';
 import { EstadoVazio } from '@/componentes/EstadoVazio';
 import { ExecucaoDoPlantao } from '@/componentes/ExecucaoDoPlantao';
 import { BotaoTermos } from '@/componentes/Termos';
+import { BotaoPagamento } from '@/componentes/Pagamento';
 import {
   LegendaDeCobertura,
   TrilhoDeCobertura,
@@ -206,6 +207,7 @@ export function Escala(): React.JSX.Element {
                   </Button>
                 )}
                 <BotaoTermos plantaoId={p.id} />
+                <BotaoPagamento plantaoId={p.id} />
               </div>
 
               {p.status === 'EM_REPASSE' && (

@@ -191,6 +191,8 @@ describe('repasse de plantão (e2e)', () => {
       expect((trilha.body as Array<{ acao: string }>).map((e) => e.acao)).toEqual([
         'VAGA_PUBLICADA',
         'MEDICO_ESCALADO',
+        // F15 — a garantia nasce com o aceite (DEC-201).
+        'PAGAMENTO_PRE_AUTORIZADO',
         'REPASSE_SOLICITADO',
         'PLANTAO_EM_REPASSE',
         'CONVITE_ENVIADO',
@@ -198,6 +200,9 @@ describe('repasse de plantão (e2e)', () => {
         'REPASSE_ENVIADO_PARA_APROVACAO',
         'REPASSE_APROVADO',
         'EXECUTANTE_SUBSTITUIDO',
+        // Modelo A: a reserva passa ao substituto, na mesma transação da aprovação.
+        'PAGAMENTO_CANCELADO',
+        'PAGAMENTO_PRE_AUTORIZADO',
       ]);
     });
   });

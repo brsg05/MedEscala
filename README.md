@@ -84,7 +84,9 @@ de novo atualiza as datas.
    **contestável**. A Ana responde à contestação pela própria Escala, e a chefia decide.
    Os avisos de cada passo chegam pelo **sino** no topo. Em qualquer plantão escalado,
    **Termos** mostra o contrato (e, depois de um repasse aprovado, o termo de substituição)
-   com as assinaturas e o PDF.
+   com as assinaturas e o PDF; **Pagamento** mostra a reserva, as retenções e a NFS-e
+   simulada — a Ana emite com um toque no plantão de anteontem (sem o toque, a plataforma
+   emite no fim do prazo e libera o valor). Tudo simulado: nada é cobrado nem enviado.
 6. **Cadastro aberto e verificação.** Na tela de entrada, **Criar conta** → "Represento uma
    instituição". A instituição nasce pendente e não publica vaga. Entre como `operador@` →
    **Verificações** → aprove.

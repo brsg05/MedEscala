@@ -18,6 +18,20 @@ import { AuditoriaService } from '../auditoria/auditoria.service';
 import { NotificacaoService } from '../notificacao/notificacao.service';
 import { EscalaService, PLANTAO_COMPLETO } from './escala.service';
 
+export interface AjustesDaInstituicao {
+  prazoConviteMinutos?: number;
+  prazoContestacaoHoras?: number;
+  permiteSubcontratacao?: boolean;
+  issRetidoBp?: number | null;
+}
+
+const ACAO_DO_AJUSTE: Readonly<Record<keyof AjustesDaInstituicao, string>> = {
+  prazoConviteMinutos: 'PRAZO_DE_CONVITE_ALTERADO',
+  prazoContestacaoHoras: 'PRAZO_DE_CONTESTACAO_ALTERADO',
+  permiteSubcontratacao: 'SUBCONTRATACAO_ALTERADA',
+  issRetidoBp: 'ISS_RETIDO_ALTERADO',
+};
+
 /** Instituições em que o usuário tem algum dos perfis pedidos (ADR-006). */
 export function instituicoesComPerfil(
   usuario: UsuarioAutenticado,
@@ -50,49 +64,45 @@ export class InstituicaoService {
   ) {}
 
   /**
-   * Prazos que o admin ajusta: cada convite da fila de substitutos (DEC-090) e a
-   * contestação de um check-out (DEC-132). Cada mudança é um evento na trilha.
+   * O que o admin ajusta na instituição: prazo do convite (DEC-090), prazo de
+   * contestação (DEC-132), modelo B (DEC-207) e ISS retido (DEC-206). Cada campo
+   * alterado vira um evento na trilha, com o valor anterior e o novo.
    */
   async configurar(
     instituicaoId: string,
-    prazos: { prazoConviteMinutos?: number; prazoContestacaoHoras?: number },
+    ajustes: AjustesDaInstituicao,
     atorId: string,
   ): Promise<void> {
     const anterior = await this.prisma.instituicao.findUnique({
       where: { id: instituicaoId },
-      select: { prazoConviteMinutos: true, prazoContestacaoHoras: true },
+      select: {
+        prazoConviteMinutos: true,
+        prazoContestacaoHoras: true,
+        permiteSubcontratacao: true,
+        issRetidoBp: true,
+      },
     });
 
     if (anterior === null) {
       throw new InstituicaoNaoEncontradaError();
     }
 
+    const campos = (Object.keys(ajustes) as (keyof AjustesDaInstituicao)[]).filter(
+      (k) => ajustes[k] !== undefined,
+    );
+
     await this.prisma.$transaction(async (tx) => {
-      await tx.instituicao.update({ where: { id: instituicaoId }, data: prazos });
+      await tx.instituicao.update({ where: { id: instituicaoId }, data: ajustes });
 
-      if (prazos.prazoConviteMinutos !== undefined) {
+      for (const campo of campos) {
         await this.auditoria.registrar(
           {
-            acao: 'PRAZO_DE_CONVITE_ALTERADO',
+            acao: ACAO_DO_AJUSTE[campo],
             entidade: 'Instituicao',
             entidadeId: instituicaoId,
             atorId,
-            estadoAnterior: String(anterior.prazoConviteMinutos),
-            estadoNovo: String(prazos.prazoConviteMinutos),
-          },
-          tx,
-        );
-      }
-
-      if (prazos.prazoContestacaoHoras !== undefined) {
-        await this.auditoria.registrar(
-          {
-            acao: 'PRAZO_DE_CONTESTACAO_ALTERADO',
-            entidade: 'Instituicao',
-            entidadeId: instituicaoId,
-            atorId,
-            estadoAnterior: String(anterior.prazoContestacaoHoras),
-            estadoNovo: String(prazos.prazoContestacaoHoras),
+            estadoAnterior: String(anterior[campo]),
+            estadoNovo: String(ajustes[campo]),
           },
           tx,
         );
@@ -209,6 +219,8 @@ export class InstituicaoService {
         status: inst.status,
         prazoConviteMinutos: inst.prazoConviteMinutos,
         prazoContestacaoHoras: inst.prazoContestacaoHoras,
+        permiteSubcontratacao: inst.permiteSubcontratacao,
+        issRetidoBp: inst.issRetidoBp,
       },
       unidades: inst.unidades.map((u) => ({
         id: u.id,

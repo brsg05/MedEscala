@@ -310,7 +310,7 @@ Substitui o "Node 22 LTS" e o "PostgreSQL 16" do §5.
 | Testes | Vitest + Supertest + Testcontainers | Duas camadas — ADR-017 |
 | Lint/format | ESLint + Prettier | |
 | Gerenciador | pnpm | Instalação rápida e lockfile determinístico |
-| PDF | `pdfkit` ou `puppeteer` (HTML → PDF) | `puppeteer` se o layout do contrato exigir |
+| PDF | `pdfkit` | Escolhido na DEC-186: leve, sem navegador embutido, funciona em serverless |
 | Frontend | React + Vite + TypeScript + Tailwind + shadcn/ui | Mesmo idioma da equipe inteira; **mobile-first** por causa da RNF03 |
 | Infra local | Supabase CLI (`supabase start`) | ADR-009 — **não há `docker-compose.yml`**; exige Docker em execução |
 | CI | GitHub Actions (lint + typecheck + testes por PR) | |
@@ -561,7 +561,8 @@ POST   /plantoes/:id/avaliacoes          F18
 
 GET    /plantoes/:id/termos              F13  (contrato e termo de substituição, com assinaturas)
 GET    /termos/:id/pdf                        (PDF gerado do retrato congelado — DEC-187)
-GET    /plantoes/:id/documento-fiscal    F14  (rascunho SIMULADO)
+GET    /plantoes/:id/financeiro          F14/F15/F17  (pernas, retenções, NFS-e — simulados)
+POST   /documentos-fiscais/:id/emitir         (o toque do médico — DEC-202)
 GET    /plantoes/:id/auditoria           F23
 
 GET    /vagas?todas=                     F10  (compatíveis por padrão — DEC-166)
@@ -656,14 +657,17 @@ Sprints de duas semanas. Todo item tem critério de aceite **verificável por te
 - [x] Contrato em PDF (F13) — contrato do plantão e termo de substituição (DEC-184 a DEC-187)
   → *verificado:* o hash recalculado do conteúdo guardado confere; o banco recusa alterar o
     termo; na escala direta o check-in completa a assinatura; quem não participa recebe 404
-- [ ] Rascunho fiscal com retenções (F14, simulado)
-  → *verificar:* IRRF 1,5% e demais retenções conferem com cálculo manual
+- [x] Rascunho fiscal com retenções (F14, simulado) — tabela por vigência, com fonte (DEC-205)
+  → *verificado:* R$ 1.200,00 → IRRF R$ 18,00 e PIS/COFINS/CSLL R$ 55,80, conferidos à mão;
+    dispensa de até R$ 10; Simples não sofre retenção; RPA declarado como não simulado
 - [x] Confirmação de execução (F16) — check-in, check-out, contestação (DEC-130 a DEC-134)
   → *verificado:* a janela de check-in abre 30 min antes; check-out abre prazo de 72h;
     plantão sem confirmação é decidido pela instituição; EM_EXECUCAO sem check-in é recusado
     pelo banco
 - [ ] Avaliação bidirecional (F18) — **adiada**: não há consenso (DEC-123)
-- [ ] Máquina de estados financeira com gateway fake (F15, F17)
+- [x] Máquina de estados financeira com gateway simulado (F15, F17) — DEC-201 a DEC-204
+  → *verificado:* reserva no aceite, captura ao cumprir, liberação só com nota emitida (o
+    banco recusa sem ela), estorno na contestação procedente, modelo B em duas pernas
 
 ### Sprint 5 — Integração, demo e relatório
 - [ ] Deploy em ambiente público

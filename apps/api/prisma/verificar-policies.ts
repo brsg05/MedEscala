@@ -94,6 +94,18 @@ const CHECAGENS: readonly Checagem[] = [
     sql: `SELECT 1 FROM pg_trigger WHERE tgname = 'assinatura_cobre_o_termo' AND NOT tgisinternal`,
   },
   {
+    nome: 'split fecha: bruto = retido + taxa + líquido (F17)',
+    sql: `SELECT 1 FROM pg_constraint WHERE conname = 'pagamento_split_fecha'`,
+  },
+  {
+    nome: 'liberação só com NFS-e emitida (F17)',
+    sql: `SELECT 1 FROM pg_trigger WHERE tgname = 'pagamento_libera_so_com_nota' AND NOT tgisinternal`,
+  },
+  {
+    nome: 'uma perna de pagamento viva por plantão',
+    sql: `SELECT 1 FROM pg_indexes WHERE indexname = 'pagamento_uma_perna_viva'`,
+  },
+  {
     nome: 'RLS ligada em todas as tabelas de domínio',
     sql: `SELECT 1 FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -101,7 +113,7 @@ const CHECAGENS: readonly Checagem[] = [
             AND c.relname IN ('usuario','instituicao','perfil_acesso','refresh_token','evento_auditoria',
                               'medico','janela_disponibilidade','unidade','setor','escala','plantao','repasse',
                               'convite','notificacao','contestacao','candidatura',
-                              'termo','assinatura_termo')
+                              'termo','assinatura_termo','pagamento','documento_fiscal')
             AND c.relrowsecurity = false`,
   },
 ];

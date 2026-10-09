@@ -30,7 +30,11 @@ import { UsuarioAtual } from '../auth/decorators/usuario-atual.decorator';
 import { PerfilAcessoService } from '../auth/perfil-acesso.service';
 import { CredenciamentoService } from '../credenciamento/credenciamento.service';
 import { EscalaService } from './escala.service';
-import { InstituicaoService, instituicoesComPerfil } from './instituicao.service';
+import {
+  type AjustesDaInstituicao,
+  InstituicaoService,
+  instituicoesComPerfil,
+} from './instituicao.service';
 
 /** Mantido com este nome porque outros módulos já o importam. */
 export const instituicoesCom = instituicoesComPerfil;
@@ -117,18 +121,11 @@ export class EscalaController {
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ): Promise<void> {
     this.instituicao.exigirPapel(usuario, instituicaoId, 'ADMIN_INSTITUICAO');
-    await this.instituicao.configurar(
-      instituicaoId,
-      {
-        ...(corpo.prazoConviteMinutos === undefined
-          ? {}
-          : { prazoConviteMinutos: corpo.prazoConviteMinutos }),
-        ...(corpo.prazoContestacaoHoras === undefined
-          ? {}
-          : { prazoContestacaoHoras: corpo.prazoContestacaoHoras }),
-      },
-      usuario.id,
-    );
+    // `undefined` não entra: só o que o admin mudou vai para a trilha.
+    const ajustes = Object.fromEntries(
+      Object.entries(corpo).filter(([, v]) => v !== undefined),
+    ) as AjustesDaInstituicao;
+    await this.instituicao.configurar(instituicaoId, ajustes, usuario.id);
   }
 
   // --- escala da instituição (F06, F12) ----------------------------------------

@@ -15,6 +15,7 @@ import { InstituicaoService } from '../escala/instituicao.service';
 import { podeTransicionar } from '../escala/domain/plantao.state';
 import { NotificacaoService } from '../notificacao/notificacao.service';
 import { TermoService } from '../termos/termo.service';
+import { FinanceiroService } from '../financeiro/financeiro.service';
 import { descreverPlantao } from '../notificacao/textos';
 import { FilaDeConvitesService } from '../repasse/fila-de-convites.service';
 import {
@@ -64,6 +65,7 @@ export class ExecucaoService {
     private readonly instituicao: InstituicaoService,
     private readonly fila: FilaDeConvitesService,
     private readonly termos: TermoService,
+    private readonly financeiro: FinanceiroService,
   ) {}
 
   // --- executante -------------------------------------------------------------
@@ -150,6 +152,8 @@ export class ExecucaoService {
         },
         tx,
       );
+      // F15 — cumprido: captura e retém até o fim do prazo (DEC-201, DEC-202).
+      await this.financeiro.aoCumprir(tx, plantaoId, agora, ate);
       await this.notificacoes.notificar(tx, [{ chefiasDe: inst.id }], {
         tipo: 'CHECKOUT_REGISTRADO',
         titulo: 'Check-out registrado',
@@ -240,6 +244,8 @@ export class ExecucaoService {
         },
         tx,
       );
+      // Sem prazo de contestação: o médico ainda tem o prazo padrão para emitir a nota.
+      await this.financeiro.aoCumprir(tx, plantaoId, agora, null);
       await this.avisarExecutante(tx, plantao, {
         tipo: 'PLANTAO_CONFIRMADO',
         titulo: 'Plantão confirmado',
@@ -330,6 +336,12 @@ export class ExecucaoService {
         },
         tx,
       );
+      // DEC-191 — procedente estorna; improcedente segue para a liberação.
+      if (resultado === 'PROCEDENTE') {
+        await this.financeiro.aoContestacaoProcedente(tx, plantaoId, new Date());
+      } else {
+        await this.financeiro.aoContestacaoImprocedente(tx, plantaoId, new Date());
+      }
       await this.avisarExecutante(tx, plantao, {
         tipo: 'CONTESTACAO_RESOLVIDA',
         titulo:

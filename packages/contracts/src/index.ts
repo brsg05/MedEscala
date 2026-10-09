@@ -15,5 +15,6 @@ export * from './auth.js';
 export * from './execucao.js';
 export * from './vagas.js';
 export * from './termos.js';
+export * from './fiscal.js';
 export * from './dominio.js';
 export * from './notificacoes.js';

@@ -149,6 +149,17 @@ export function Estrutura({ usuario }: { usuario: UsuarioAutenticado }): React.J
               aoSalvar={estrutura.recarregar}
             />
           </section>
+
+          <section aria-label="Pagamento e nota fiscal" className="space-y-3">
+            <p className="sinal">Pagamento e nota fiscal</p>
+            <AjustesFiscais
+              instituicaoId={instituicaoId}
+              permiteSubcontratacao={dado.instituicao.permiteSubcontratacao}
+              issRetidoBp={dado.instituicao.issRetidoBp}
+              editavel={admin}
+              aoSalvar={estrutura.recarregar}
+            />
+          </section>
         </>
       )}
     </div>
@@ -495,6 +506,121 @@ function Prazo({
         disabled={enviando || Number(valor) === atual}
       >
         {enviando ? 'Salvando…' : 'Salvar prazo'}
+      </Button>
+    </form>
+  );
+}
+
+/**
+ * DEC-206 e DEC-207 — o que a instituição decide no lado fiscal: se aceita o
+ * modelo B (subcontratação) e se o município manda reter ISS na fonte.
+ */
+function AjustesFiscais({
+  instituicaoId,
+  permiteSubcontratacao,
+  issRetidoBp,
+  editavel,
+  aoSalvar,
+}: {
+  instituicaoId: string;
+  permiteSubcontratacao: boolean;
+  issRetidoBp: number | null;
+  editavel: boolean;
+  aoSalvar: () => void;
+}): React.JSX.Element {
+  const [b, setB] = useState(permiteSubcontratacao);
+  const [iss, setIss] = useState(
+    issRetidoBp === null ? '' : String(issRetidoBp / 100).replace('.', ','),
+  );
+  const [erro, setErro] = useState<string | null>(null);
+  const [enviando, setEnviando] = useState(false);
+
+  const issComoTexto =
+    issRetidoBp === null
+      ? 'sem retenção de ISS na fonte'
+      : `ISS retido de ${String(issRetidoBp / 100).replace('.', ',')}%`;
+
+  if (!editavel) {
+    return (
+      <p className="rounded-lg border border-borda bg-tinta-2 px-4 py-3 text-sm text-gelo-2">
+        {permiteSubcontratacao ? 'Aceita' : 'Não aceita'} subcontratação (modelo B) · {issComoTexto}
+        .
+      </p>
+    );
+  }
+
+  async function enviar(evento: FormEvent<HTMLFormElement>): Promise<void> {
+    evento.preventDefault();
+    setErro(null);
+
+    const texto = iss.trim().replace(',', '.');
+    const bp = texto === '' ? null : Math.round(Number(texto) * 100);
+    if (bp !== null && Number.isNaN(bp)) {
+      setErro('ISS inválido. Use, por exemplo, 5 ou 2,5');
+      return;
+    }
+
+    const validado = ConfiguracaoInstituicaoRequest.safeParse({
+      permiteSubcontratacao: b,
+      issRetidoBp: bp,
+    });
+    if (!validado.success) {
+      setErro(validado.error.issues[0]?.message ?? 'Dados inválidos');
+      return;
+    }
+
+    setEnviando(true);
+    try {
+      await api.configurarInstituicao(instituicaoId, validado.data);
+      aoSalvar();
+    } catch (e) {
+      setErro(e instanceof ErroDaApi ? e.message : 'Não foi possível salvar');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={(e) => void enviar(e)}
+      className="space-y-4 rounded-xl border border-dashed border-borda p-4"
+      noValidate
+    >
+      <label className="flex cursor-pointer gap-3">
+        <input
+          type="checkbox"
+          checked={b}
+          onChange={(e) => setB(e.target.checked)}
+          className="mt-1 accent-[var(--color-turno)]"
+        />
+        <span>
+          <span className="block text-sm text-gelo">Aceitar subcontratação (modelo B)</span>
+          <span className="block text-xs text-gelo-3">
+            O titular continua contratado e subcontrata o substituto. Gera duas notas e pode
+            tributar o mesmo valor duas vezes; o titular vê esse alerta antes de escolher. O padrão
+            é o modelo A.
+          </span>
+        </span>
+      </label>
+
+      <div className="space-y-2">
+        <Label htmlFor="iss-retido">ISS retido na fonte (%)</Label>
+        <Input
+          id="iss-retido"
+          inputMode="decimal"
+          placeholder="vazio = sem retenção"
+          value={iss}
+          onChange={(e) => setIss(e.target.value)}
+        />
+        <p className="text-xs text-gelo-3">
+          Preencha se o município manda a instituição reter o ISS do médico (entre 2% e 5%). Entra
+          no rascunho da NFS-e de cada plantão.
+        </p>
+      </div>
+
+      <ErroDeFormulario mensagem={erro} />
+      <Button type="submit" variante="contorno" className="w-full" disabled={enviando}>
+        {enviando ? 'Salvando…' : 'Salvar'}
       </Button>
     </form>
   );

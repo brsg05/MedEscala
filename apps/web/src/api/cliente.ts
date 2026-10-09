@@ -19,6 +19,7 @@ import {
   ErroApi,
   EstruturaResponse,
   EventoAuditoriaResponse,
+  FinanceiroResponse,
   HEADER_CSRF_TOKEN,
   IndicarSubstitutosRequest,
   LoginRequest,
@@ -372,6 +373,15 @@ export const api = {
 
   pdfDoTermo: (termoId: string): Promise<{ arquivo: Blob; nome: string }> =>
     baixar(`/termos/${termoId}/pdf`),
+
+  // --- pagamento e nota fiscal (F14, F15, F17) ----------------------------------
+
+  financeiro: (plantaoId: string): Promise<FinanceiroResponse> =>
+    requisitar(`/plantoes/${plantaoId}/financeiro`, FinanceiroResponse),
+
+  /** DEC-202 — o toque que emite a NFS-e (simulada), sem sair do app. */
+  emitirNfse: (documentoId: string): Promise<FinanceiroResponse> =>
+    post(`/documentos-fiscais/${documentoId}/emitir`, FinanceiroResponse),
 
   // --- avisos (F22) -----------------------------------------------------------
 

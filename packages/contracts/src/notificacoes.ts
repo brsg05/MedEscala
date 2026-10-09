@@ -27,6 +27,11 @@ export const TipoNotificacao = z.enum([
   'CANDIDATURA_RECUSADA',
   'CANDIDATURA_ENCERRADA',
   'VAGA_PREENCHIDA',
+  // pagamento e nota (F14, F15, F17)
+  'NFSE_PRONTA_PARA_EMITIR',
+  'NFSE_EMITIDA',
+  'PAGAMENTO_LIBERADO',
+  'PAGAMENTO_ESTORNADO',
   // escala e execução (F16)
   'MEDICO_ESCALADO',
   'CHECKIN_LIBERADO',

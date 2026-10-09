@@ -12,6 +12,7 @@ import {
   PlantaoNaoRepassavelError,
   RepasseJaEmAbertoError,
   RepasseNaoEncontradoError,
+  SubcontratacaoNaoPermitidaError,
   TransicaoInvalidaError,
 } from '../../shared/errors/dominio-negocio.error';
 import { aceitaRepasse } from '../escala/domain/plantao.state';
@@ -20,6 +21,7 @@ import { EM_ABERTO, podeTransicionar } from './domain/repasse.state';
 import { FilaDeConvitesService } from './fila-de-convites.service';
 import { NotificacaoService } from '../notificacao/notificacao.service';
 import { TermoService } from '../termos/termo.service';
+import { FinanceiroService } from '../financeiro/financeiro.service';
 import { descreverPlantao } from '../notificacao/textos';
 
 const RESUMO_MEDICO = { include: { usuario: { select: { nome: true } } } } as const;
@@ -74,6 +76,7 @@ export class RepasseService {
     private readonly fila: FilaDeConvitesService,
     private readonly notificacoes: NotificacaoService,
     private readonly termos: TermoService,
+    private readonly financeiro: FinanceiroService,
   ) {}
 
   /**
@@ -99,6 +102,11 @@ export class RepasseService {
     }
 
     const instituicao = plantao.escala.setor.unidade.instituicao;
+
+    // DEC-207 — o modelo B só existe onde a instituição habilitou.
+    if (dados.modeloFiscal === 'B_SUBCONTRATACAO' && !instituicao.permiteSubcontratacao) {
+      throw new SubcontratacaoNaoPermitidaError();
+    }
 
     if (!respeitaAntecedenciaMinima(plantao.inicio, instituicao.antecedenciaMinimaRepasseHoras)) {
       throw new AntecedenciaInsuficienteError(instituicao.antecedenciaMinimaRepasseHoras);
@@ -398,6 +406,15 @@ export class RepasseService {
         usuarioId: aprovadorUsuarioId,
         acao: 'Aprovou a substituição',
         em: aprovadoEm,
+      });
+
+      // F15 — modelo A: a reserva passa ao substituto; modelo B: o titular
+      // reserva para o substituto, e a dele continua (DEC-203).
+      await this.financeiro.aoAprovarRepasse(tx, {
+        plantaoId: repasse.plantaoId,
+        modeloFiscal: repasse.modeloFiscal,
+        titularId: repasse.medicoTitularId,
+        substitutoId,
       });
 
       const nomeSubstituto = repasse.substituto?.usuario.nome ?? 'O substituto';

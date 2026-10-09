@@ -336,3 +336,22 @@ export class CandidaturaJaRespondidaError extends ErroDominio {
     super('Esta candidatura já foi respondida pela instituição');
   }
 }
+
+// --- pagamento e nota fiscal (F14, F15, F17) -----------------------------------
+
+export class DocumentoFiscalNaoEmissivelError extends ErroDominio {
+  readonly codigo = 'DOCUMENTO_FISCAL_NAO_EMISSIVEL';
+
+  constructor(motivo: string) {
+    super(motivo);
+  }
+}
+
+/** DEC-207 — o modelo B só existe se a instituição habilitar. */
+export class SubcontratacaoNaoPermitidaError extends ErroDominio {
+  readonly codigo = 'SUBCONTRATACAO_NAO_PERMITIDA';
+
+  constructor() {
+    super('Esta instituição não aceita subcontratação (modelo B); use o modelo A');
+  }
+}

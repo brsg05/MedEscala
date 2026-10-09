@@ -86,6 +86,7 @@ const PLANTAO = {
     nome: 'Sala Vermelha',
     unidade: 'UPA Torrões',
     instituicao: 'Hospital Escola',
+    subcontratacaoPermitida: false,
   },
   titular: {
     id: '55555555-5555-4555-8555-555555555555',
@@ -121,6 +122,8 @@ function estrutura(status: 'ATIVA' | 'PENDENTE') {
       status,
       prazoConviteMinutos: 60,
       prazoContestacaoHoras: 72,
+      permiteSubcontratacao: false,
+      issRetidoBp: null,
     },
     unidades: [
       {
@@ -833,5 +836,92 @@ describe('termos (F13)', () => {
     expect(screen.getByText(/Escalou o médico/u)).toBeDefined();
     expect(screen.getByText('o check-in vale como aceite')).toBeDefined();
     expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeDefined();
+  });
+});
+
+describe('pagamento e nota (F14, F15, F17)', () => {
+  const FINANCEIRO = {
+    pernas: [
+      {
+        id: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+        perna: 'PRINCIPAL',
+        status: 'RETIDO',
+        pagador: 'Hospital Escola',
+        beneficiario: 'Ana Medeiros',
+        valorBrutoCentavos: 120_000,
+        retidoCentavos: 7_380,
+        taxaPlataformaCentavos: 0,
+        liquidoCentavos: 112_620,
+        preAutorizadoEm: new Date().toISOString(),
+        retidoEm: new Date().toISOString(),
+        liberavelEm: new Date(Date.now() + 72 * 3_600_000).toISOString(),
+        liberadoEm: null,
+        documentoFiscal: {
+          id: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+          status: 'RASCUNHO',
+          prestadorNome: 'Ana Medeiros',
+          prestadorRegistro: 'CRM/PE 12345',
+          tomadorNome: 'Hospital Escola',
+          tomadorRegistro: 'CNPJ 12.345.678/0001-90',
+          discriminacao: 'Serviço médico',
+          valorServicoCentavos: 120_000,
+          retencoes: [
+            { tributo: 'IRRF', aliquotaBp: 150, valorCentavos: 1_800, retido: true, motivo: null },
+            {
+              tributo: 'PIS_COFINS_CSLL',
+              aliquotaBp: 465,
+              valorCentavos: 5_580,
+              retido: true,
+              motivo: null,
+            },
+          ],
+          observacoes: [],
+          valorLiquidoCentavos: 112_620,
+          numero: null,
+          codigoVerificacao: null,
+          emitidaEm: null,
+          emitidaPor: null,
+          podeEmitir: true,
+        },
+      },
+    ],
+  };
+
+  it('mostra as retenções, o líquido e emite a NFS-e com um toque (DEC-202)', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [PLANTAO], alertaCargaHoraria: null }),
+      [`/plantoes/${PLANTAO.id}/financeiro`]: () => json(200, FINANCEIRO),
+      '/documentos-fiscais/ffffffff-ffff-4fff-8fff-ffffffffffff/emitir': () =>
+        json(201, FINANCEIRO),
+    });
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Pagamento' }));
+
+    expect(await screen.findByText('Retido em garantia')).toBeDefined();
+    expect(screen.getByText(/1\.126,20/u)).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Emitir NFS-e' }));
+
+    await waitFor(() => {
+      expect(
+        vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/documentos-fiscais/')),
+      ).toBe(true);
+    });
+  });
+
+  it('o modelo B só aparece onde a instituição habilitou, e vem com o alerta (DEC-203, DEC-207)', async () => {
+    const habilitado = { ...PLANTAO, setor: { ...PLANTAO.setor, subcontratacaoPermitida: true } };
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [habilitado], alertaCargaHoraria: null }),
+      [`/plantoes/${PLANTAO.id}/substitutos`]: () => json(200, []),
+    });
+    render(<App />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Pedir repasse' }));
+    fireEvent.click(await screen.findByLabelText(/B — você subcontrata/u));
+
+    expect(await screen.findByText(/Atenção à dupla tributação/u)).toBeDefined();
   });
 });

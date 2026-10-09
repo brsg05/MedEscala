@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import {
   AbrirRepasseRequest,
+  calcularRetencoes,
+  type ModeloFiscal,
   formatarCentavos,
   formatarDataHora,
   type CandidatoResponse,
@@ -27,6 +29,7 @@ interface Props {
  */
 export function PedirRepasse({ plantao, aoFechar, aoAbrir }: Props): React.JSX.Element {
   const [motivo, setMotivo] = useState('');
+  const [modelo, setModelo] = useState<ModeloFiscal>('A_RECONTRATACAO');
   const [fila, setFila] = useState<CandidatoResponse[]>([]);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
@@ -37,7 +40,7 @@ export function PedirRepasse({ plantao, aoFechar, aoAbrir }: Props): React.JSX.E
 
     const validado = AbrirRepasseRequest.safeParse({
       motivo,
-      modeloFiscal: 'A_RECONTRATACAO',
+      modeloFiscal: modelo,
       indicados: fila.map((c) => c.id),
     });
 
@@ -92,6 +95,10 @@ export function PedirRepasse({ plantao, aoFechar, aoAbrir }: Props): React.JSX.E
 
         <MontadorDeFila plantaoId={plantao.id} fila={fila} aoMudar={setFila} />
 
+        {plantao.setor.subcontratacaoPermitida && (
+          <EscolhaDoModelo plantao={plantao} modelo={modelo} aoMudar={setModelo} />
+        )}
+
         <p className="rounded-lg border border-espera/25 bg-espera-fundo px-3 py-2.5 text-xs leading-relaxed text-espera">
           Abrir o pedido não transfere o plantão. Enquanto a instituição não aprovar, a escala
           oficial não muda e <strong className="font-semibold">você segue responsável</strong>.
@@ -109,5 +116,83 @@ export function PedirRepasse({ plantao, aoFechar, aoAbrir }: Props): React.JSX.E
         </div>
       </form>
     </Painel>
+  );
+}
+
+/**
+ * Quadro 3 da Entrega 1 — modelo A (padrão: a instituição contrata o substituto)
+ * ou B (o titular subcontrata), com o alerta explícito do efeito tributário
+ * (DEC-203). Só aparece onde a instituição habilitou o B (DEC-207).
+ */
+function EscolhaDoModelo({
+  plantao,
+  modelo,
+  aoMudar,
+}: {
+  plantao: PlantaoResponse;
+  modelo: ModeloFiscal;
+  aoMudar: (m: ModeloFiscal) => void;
+}): React.JSX.Element {
+  // Estimativa do que é retido DE NOVO na segunda nota (substituto → titular):
+  // sem saber o regime do substituto, calcula como não optante do Simples.
+  const segunda = calcularRetencoes({
+    valorCentavos: plantao.valorCentavos,
+    prestador: { modelo: plantao.modeloContratacao, regime: null },
+    tomadorOptanteDoSimples: false,
+    issRetidoBp: null,
+    data: new Date(),
+  });
+
+  const opcoes: { valor: ModeloFiscal; titulo: string; texto: string }[] = [
+    {
+      valor: 'A_RECONTRATACAO',
+      titulo: 'A — a instituição contrata o substituto',
+      texto: 'Uma nota só, do substituto para a instituição. Recomendado.',
+    },
+    {
+      valor: 'B_SUBCONTRATACAO',
+      titulo: 'B — você subcontrata o substituto',
+      texto: 'Duas notas: a sua para a instituição e a do substituto para você.',
+    },
+  ];
+
+  return (
+    <fieldset className="space-y-2">
+      <legend className="sinal mb-2">Modelo do repasse</legend>
+      {opcoes.map((o) => (
+        <label
+          key={o.valor}
+          className={`flex cursor-pointer gap-3 rounded-lg border px-3 py-2.5 ${
+            modelo === o.valor ? 'border-turno bg-tinta-3' : 'border-borda'
+          }`}
+        >
+          <input
+            type="radio"
+            name="modelo-fiscal"
+            value={o.valor}
+            checked={modelo === o.valor}
+            onChange={() => aoMudar(o.valor)}
+            className="mt-1 accent-[var(--color-turno)]"
+          />
+          <span>
+            <span className="block text-sm text-gelo">{o.titulo}</span>
+            <span className="block text-xs text-gelo-3">{o.texto}</span>
+          </span>
+        </label>
+      ))}
+      {modelo === 'B_SUBCONTRATACAO' && (
+        <p
+          role="alert"
+          className="rounded-lg border border-vazio/30 bg-vazio-fundo px-3 py-2.5 text-xs leading-relaxed text-vazio"
+        >
+          <strong className="font-semibold">Atenção à dupla tributação.</strong> No Simples Nacional
+          e no Lucro Presumido, o imposto incide sobre a receita bruta: você é tributado pelo valor
+          cheio, e o substituto de novo pela parte dele. Só na segunda nota, até{' '}
+          <strong className="dado">{formatarCentavos(segunda.retidoCentavos)}</strong> são retidos
+          na fonte outra vez (IRRF e PIS/COFINS/CSLL). No modelo A isso não acontece. Estimativa
+          simulada — confirme com seu contador.
+        </p>
+      )}
+    </fieldset>
   );
 }

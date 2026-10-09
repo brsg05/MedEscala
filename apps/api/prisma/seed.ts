@@ -11,6 +11,7 @@
  */
 import { PrismaClient, Perfil } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
+import { calcularRetencoes } from '@medescala/contracts';
 import type { Prisma } from '@prisma/client';
 import {
   hashDe,
@@ -175,8 +176,14 @@ async function principal(): Promise<void> {
   // PENDENTE (DEC-063), mas a demo precisa de uma que publique vaga.
   const instituicao = await prisma.instituicao.upsert({
     where: { cnpj: INSTITUICAO.cnpj },
-    update: { nome: INSTITUICAO.nome, status: 'ATIVA' },
-    create: { ...INSTITUICAO, status: 'ATIVA', verificadaEm: new Date() },
+    // Modelo B habilitado na demonstração, para o alerta da DEC-203 aparecer.
+    update: { nome: INSTITUICAO.nome, status: 'ATIVA', permiteSubcontratacao: true },
+    create: {
+      ...INSTITUICAO,
+      status: 'ATIVA',
+      verificadaEm: new Date(),
+      permiteSubcontratacao: true,
+    },
   });
 
   console.log(`instituição  ${instituicao.nome}`);
@@ -405,7 +412,63 @@ async function semearDemonstracao(unidadeId: string): Promise<void> {
       ...criado,
       ...(execucao.checkinEm === undefined ? {} : { checkinEm: execucao.checkinEm }),
     });
+    await pagamento(criado.id, status, execucao);
     return criado;
+  }
+
+  /**
+   * F15 — como na escala de verdade: a instituição reservou o valor ao escalar
+   * (DEC-201); o plantão cumprido já foi capturado, com o rascunho da NFS-e
+   * pronto para a Ana emitir (DEC-202).
+   */
+  async function pagamento(
+    plantaoId: string,
+    status: 'CONFIRMADO' | 'EM_REPASSE' | 'EXECUTADO',
+    execucao: { checkoutEm?: Date; contestavelAte?: Date },
+  ): Promise<void> {
+    const valor = 140_000;
+    const r = calcularRetencoes({
+      valorCentavos: valor,
+      prestador: { modelo: 'PJ', regime: ana.regimeTributario },
+      tomadorOptanteDoSimples: false,
+      issRetidoBp: inst.issRetidoBp,
+      data: execucao.checkoutEm ?? new Date(),
+    });
+    const cumprido = status === 'EXECUTADO';
+    const criado = await prisma.pagamento.create({
+      data: {
+        plantaoId,
+        perna: 'PRINCIPAL',
+        pagadorInstituicaoId: inst.id,
+        beneficiarioMedicoId: ana.id,
+        valorBrutoCentavos: valor,
+        retidoCentavos: r.retidoCentavos,
+        liquidoCentavos: valor - r.retidoCentavos,
+        referenciaGateway: `sim_seed_${plantaoId.slice(0, 8)}`,
+        status: cumprido ? 'RETIDO' : 'PRE_AUTORIZADO',
+        ...(cumprido
+          ? { retidoEm: execucao.checkoutEm ?? null, liberavelEm: execucao.contestavelAte ?? null }
+          : {}),
+      },
+    });
+    if (cumprido) {
+      await prisma.documentoFiscal.create({
+        data: {
+          pagamentoId: criado.id,
+          prestadorMedicoId: ana.id,
+          prestadorNome: anaUsuario.nome,
+          prestadorRegistro:
+            ana.cnpj === null ? registroDeCrm(ana.crm, ana.crmUf) : registroDeCnpj(ana.cnpj),
+          tomadorNome: inst.nome,
+          tomadorRegistro: registroDeCnpj(inst.cnpj),
+          discriminacao: `Serviço médico em Clínica Médica — plantão de ${local.nome}.`,
+          valorServicoCentavos: valor,
+          retencoes: r.linhas as unknown as Prisma.InputJsonValue,
+          observacoes: r.observacoes,
+          valorLiquidoCentavos: valor - r.retidoCentavos,
+        },
+      });
+    }
   }
 
   // Anteontem — cumprido, com check-in e check-out, ainda contestável pela

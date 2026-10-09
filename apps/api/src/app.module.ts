@@ -13,6 +13,8 @@ import { EscalaModule } from './modules/escala/escala.module';
 import { ExecucaoModule } from './modules/execucao/execucao.module';
 import { NotificacaoModule } from './modules/notificacao/notificacao.module';
 import { TermosModule } from './modules/termos/termos.module';
+import { IntegracoesModule } from './modules/integracoes/integracoes.module';
+import { FinanceiroModule } from './modules/financeiro/financeiro.module';
 import { OperadorModule } from './modules/operador/operador.module';
 import { RepasseModule } from './modules/repasse/repasse.module';
 import { VagasModule } from './modules/vagas/vagas.module';
@@ -42,6 +44,8 @@ import { PerfisGuard } from './modules/auth/guards/perfis.guard';
     AuditoriaModule,
     NotificacaoModule,
     TermosModule,
+    IntegracoesModule,
+    FinanceiroModule,
     AuthModule,
     CredenciamentoModule,
     EscalaModule,
