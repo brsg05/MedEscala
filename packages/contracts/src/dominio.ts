@@ -438,6 +438,11 @@ const DadosDeConta = {
   nome: z.string().trim().min(3, 'Informe o nome completo').max(120),
   email: z.email('E-mail inválido'),
   senha: z.string().min(8, 'A senha deve ter ao menos 8 caracteres'),
+  /**
+   * F24 — versão da política de privacidade que a pessoa leu e aceitou ao criar
+   * a conta. Sem aceite não há conta (DEC-225); a api confere se é a vigente.
+   */
+  aceitePolitica: z.string().min(1, 'Aceite a política de privacidade').max(40),
 };
 
 export const CadastroRequest = z.discriminatedUnion('tipo', [

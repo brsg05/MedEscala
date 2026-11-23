@@ -73,6 +73,11 @@ const STATUS_POR_CODIGO: Readonly<Record<string, number>> = {
   // --- pagamento e nota fiscal (F14, F15, F17) ----------------------------------
   DOCUMENTO_FISCAL_NAO_EMISSIVEL: HttpStatus.CONFLICT,
   SUBCONTRATACAO_NAO_PERMITIDA: HttpStatus.UNPROCESSABLE_ENTITY,
+
+  // --- privacidade (F24) ---------------------------------------------------------
+  POLITICA_DESATUALIZADA: HttpStatus.CONFLICT,
+  // 428: o pedido é válido, mas depende de uma condição prévia — o aceite.
+  ACEITE_DA_POLITICA_PENDENTE: HttpStatus.PRECONDITION_REQUIRED,
 };
 
 @Catch(ErroDominio)

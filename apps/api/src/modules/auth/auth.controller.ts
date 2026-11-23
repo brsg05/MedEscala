@@ -19,7 +19,10 @@ import { SemCsrf } from './decorators/sem-csrf.decorator';
 import { UsuarioAtual } from './decorators/usuario-atual.decorator';
 import { gravarCookiesDeSessao, limparCookiesDeSessao } from './sessao.cookies';
 import type { RequisicaoAutenticada } from './tipos';
+import { SemAceiteDaPolitica } from '../privacidade/sem-aceite.decorator';
 
+// F24: sessão funciona sem aceite — quem não aceita precisa conseguir sair.
+@SemAceiteDaPolitica()
 @Controller('auth')
 export class AuthController {
   private readonly producao: boolean;

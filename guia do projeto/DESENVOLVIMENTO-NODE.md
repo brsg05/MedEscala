@@ -59,6 +59,7 @@ a tese — que o repasse pode ser rastreável, aprovado e formalizado.
 | F18 | Avaliação bidirecional | |
 | F22 | Notificações | In-app (feito, DEC-121); e-mail quando houver provedor; sem WhatsApp |
 | F23 | Controle de acesso e auditoria | Log append-only de eventos de domínio |
+| F24 | Consentimento e privacidade | Versão mínima (ADR-015): política versionada e aceite registrado; sem atendimento automatizado de direitos do titular |
 
 ### 3.2 Fora do MVP (simulado ou adiado)
 
@@ -188,6 +189,9 @@ como manda o ADR-004.
 
 ### ADR-015 — F24 (LGPD) em versão mínima dentro do MVP
 Ver §3.2. A Entrega 1 prevalece, e lá a F24 é essencial.
+**Implementada** (DEC-224 a DEC-228): política versionada em `packages/contracts`, aceite
+registrado no cadastro e imutável no banco, guard global que responde 428 a quem não aceitou
+a versão vigente. Os prazos de retenção são `provisórios` (DEC-226).
 
 ### ADR-016 — Módulo `auth` próprio
 O §6 listava os módulos de domínio mas não `auth`, embora o §9 exponha `/auth/login` e
@@ -339,7 +343,8 @@ MedEscala/                      # raiz do repositório (D10)
 │  │  │  │  ├─ avaliacao/       #                                        F18
 │  │  │  │  ├─ auditoria/       #                                        F23
 │  │  │  │  ├─ operador/        # conferência de CRM e CNPJ              ADR-025
-│  │  │  │  └─ notificacao/     #                                        F22
+│  │  │  │  ├─ notificacao/     #                                        F22
+│  │  │  │  └─ privacidade/     # política versionada, aceite, guard     F24
 │  │  │  ├─ shared/             # guards, filters, erros de domínio
 │  │  │  └─ main.ts
 │  │  ├─ prisma/                # schema, migrations, seed, scripts de policy
@@ -581,6 +586,10 @@ POST   /plantoes/:id/atribuir                 (escala direta — DEC-052; fecha 
 GET    /notificacoes                     F22  (30 mais recentes + não lidas; polling — DEC-127)
 POST   /notificacoes/:id/lida
 POST   /notificacoes/lidas
+
+GET    /privacidade/politica             F24  (pública — versão vigente, com hash)
+GET    /privacidade/aceite                    (versão aceita e se há pendência)
+POST   /privacidade/aceite                    (aceita a versão vigente; sem ela, 428 no resto)
 ```
 
 Os schemas Zod de request e response ficam em `packages/contracts` e são importados pelo
@@ -665,6 +674,10 @@ Sprints de duas semanas. Todo item tem critério de aceite **verificável por te
     plantão sem confirmação é decidido pela instituição; EM_EXECUCAO sem check-in é recusado
     pelo banco
 - [ ] Avaliação bidirecional (F18) — **adiada**: não há consenso (DEC-123)
+- [x] Consentimento e privacidade (F24, versão mínima) — DEC-224 a DEC-228
+  → *verificado:* o banco recusa reescrever um aceite; o hash da v1 está congelado por teste;
+    cadastro sem aceite (400) ou com versão velha (409) não cria conta nem credencial; sem
+    aceite da vigente, `/medicos/me` responde 428 e `/auth/me` e `/privacidade/*` respondem
 - [x] Máquina de estados financeira com gateway simulado (F15, F17) — DEC-201 a DEC-204
   → *verificado:* reserva no aceite, captura ao cumprir, liberação só com nota emitida (o
     banco recusa sem ela), estorno na contestação procedente, modelo B em duas pernas

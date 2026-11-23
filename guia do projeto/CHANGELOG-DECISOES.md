@@ -32,7 +32,7 @@ Decisões que ainda **não** foram tomadas e bloqueiam alguma parte do produto.
 | Limite de carga horária (F08) | Regra além das 24h contíguas da RN03 | Filtro do matching |
 | `StatusPagamento` | Não existe no schema; só citado em prosa (§3.2) | Sprint 4 |
 | Escala da avaliação (F18) | Nota, critérios, quando fica visível. **Adiada**: não há consenso sobre a avaliação de mão dupla (DEC-123) | F18 |
-| Retenção de dados (F24) | Prazos concretos | F24 mínima |
+| Retenção de dados (F24) | Revisar os prazos **provisórios** da DEC-226 e decidir o expurgo automático (hoje a política só está escrita) | Fechar a F24 mínima |
 | PaaS de deploy | Provavelmente **Vercel**, sem confirmação (DEC-125) | Entrega 5 |
 | Provedor de e-mail (F22) | A F22 começa só in-app (DEC-121) | Notificação por e-mail |
 | Multi-tenant | Modelo de tenants que vai substituir o cadastro aberto (ver DEC-059) | Cadastro definitivo |
@@ -348,3 +348,13 @@ Decisões tomadas durante a implementação da DEC-087 a DEC-099.
 | DEC-221 | Cláusulas do termo sem referência a regra (texto do modelo **v2**); rodapé do PDF e observação da nota idem | Claude | O termo é documento para as partes, não para a banca | DEC-198 |
 | DEC-222 | A trilha mostra **todo** evento com rótulo legível; evento sem rótulo cai num texto legível, nunca no código cru | Claude | Os eventos de pagamento, nota e vaga apareciam como códigos | F23 |
 | DEC-223 | Seed com **cenários de uso**: segundo hospital (Santa Luzia, com chefia própria e ISS retido), 8 médicos novos (2 aguardando conferência), escala de hoje viva (em execução, vaga com candidaturas, convite correndo), convites e repasse esperando a Ana, contestação para ela responder, histórico pago e repasse aprovado com termo, duas aprovações para a chefia, avisos não lidos | Claude | Apresentação: o sistema em uso, não vazio. Em setores próprios, recriados a cada seed — os e2e não os apagam | — |
+
+## 2026-11-23 — F24: política de privacidade e aceite
+
+| ID | Decisão | Origem | Motivo | Ref. |
+|---|---|---|---|---|
+| DEC-224 | A política de privacidade mora **versionada em `packages/contracts`** (finalidade, base legal e retenção por categoria de dado). Versão nova entra como **item novo** da lista; a publicada não se edita. O aceite grava a versão e o **SHA-256 do texto canônico**, e um teste congela o hash da v1 | Claude | Mesmo padrão da tabela fiscal por vigência (§3.2): quem aceitou a v1 aceitou aquele texto, e o hash precisa continuar conferindo | ADR-015 |
+| DEC-225 | **Sem aceite da versão vigente, não há conta nem uso**: o cadastro exige `aceitePolitica` e grava o aceite na mesma transação da conta; um guard global responde **428 `ACEITE_DA_POLITICA_PENDENTE`** a tudo, menos às rotas de sessão (`/auth/*`) e de privacidade. No web, quem tem versão pendente vê a política antes de qualquer tela, com "Li e aceito" ou "Sair" | Claude | ADR-010: regra que só a tela aplica um `curl` ignora. **Merece revisão**: a base legal da maior parte do tratamento é execução de contrato, não consentimento — o aceite registra a ciência da política | ADR-015 |
+| DEC-226 | Prazos de retenção da v1: conta, registro profissional e dados bancários **enquanto a conta existir**; dados fiscais, escala, termos, pagamentos e trilha **5 anos**; ocorrências **2 anos**. A política está **só escrita**: não há expurgo automático | Claude | `provisória`: era decisão em aberto. Os 5 anos seguem o prazo do fisco para documentos fiscais e servem de defesa em disputa; valem até a equipe revisar | ADR-015 |
+| DEC-227 | O aceite é **imutável no banco**: trigger recusa UPDATE (`supabase/policies/009`). DELETE só em cascata, quando a conta é removida — nenhum caminho da api apaga aceite. Pedidos de acesso, correção e eliminação seguem **fora do sistema**, pelo encarregado | Claude | Aceite reescrito não prova nada (mesma linha do ADR-012); o atendimento automatizado continua fora pelo ADR-015 | ADR-012 |
+| DEC-228 | O seed registra o aceite da versão vigente para **todos** os usuários, num passo único no fim | Claude | Sem isso, a demonstração e os e2e parariam na tela de aceite | DEC-225 |

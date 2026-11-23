@@ -28,6 +28,8 @@ import {
   MedicoResponse,
   NotificacoesResponse,
   PendenciasResponse,
+  PoliticaResponse,
+  SituacaoDoAceiteResponse,
   PlantaoResponse,
   RecusarRepasseRequest,
   RepasseComPlantao,
@@ -171,6 +173,17 @@ export const api = {
       headers: { [HEADER_CSRF_TOKEN]: csrfTokenAtual() ?? '' },
     });
   },
+
+  // --- privacidade (F24) ------------------------------------------------------
+
+  /** Pública: quem cria conta lê antes de aceitar. */
+  politica: (): Promise<PoliticaResponse> => requisitar('/privacidade/politica', PoliticaResponse),
+
+  situacaoDoAceite: (): Promise<SituacaoDoAceiteResponse> =>
+    requisitar('/privacidade/aceite', SituacaoDoAceiteResponse),
+
+  aceitarPolitica: (versao: string): Promise<SituacaoDoAceiteResponse> =>
+    post('/privacidade/aceite', SituacaoDoAceiteResponse, { versao }),
 
   // --- médico (F01, F04, F05) -----------------------------------------------
 

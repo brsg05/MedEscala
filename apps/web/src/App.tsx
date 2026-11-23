@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router';
 import type { UsuarioAutenticado } from '@medescala/contracts';
 import { api } from '@/api/cliente';
+import { AceiteDaPolitica } from '@/componentes/AceiteDaPolitica';
 import { AppShell, MarcaDoApp } from '@/componentes/AppShell';
 import { modosDisponiveis, rotaInicial, type Modo } from '@/modo';
 import { Cadastro } from '@/paginas/Cadastro';
@@ -55,15 +56,17 @@ export function App(): React.JSX.Element {
     );
   }
 
+  const sair = (): void => {
+    void api.logout().finally(() => {
+      setSessao({ estado: 'fora', tela: 'entrar' });
+    });
+  };
+
+  // F24 — sem aceite da política vigente, nada da área logada abre (DEC-225).
   return (
-    <AreaLogada
-      usuario={sessao.usuario}
-      aoSair={() => {
-        void api.logout().finally(() => {
-          setSessao({ estado: 'fora', tela: 'entrar' });
-        });
-      }}
-    />
+    <AceiteDaPolitica key={sessao.usuario.id} aoSair={sair}>
+      <AreaLogada usuario={sessao.usuario} aoSair={sair} />
+    </AceiteDaPolitica>
   );
 }
 

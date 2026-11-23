@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { CadastroRequest } from '@medescala/contracts';
+import { politicaVigente, type CadastroRequest } from '@medescala/contracts';
 import { PrismaService } from '../../shared/prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { NotificacaoService } from '../notificacao/notificacao.service';
@@ -7,7 +7,9 @@ import {
   EmailJaCadastradoError,
   InstituicaoJaCadastradaError,
   MedicoJaCadastradoError,
+  PoliticaDesatualizadaError,
 } from '../../shared/errors/dominio-negocio.error';
+import { PrivacidadeService } from '../privacidade/privacidade.service';
 import { SupabaseAuthService } from './supabase-auth.service';
 
 /**
@@ -33,11 +35,17 @@ export class CadastroService {
     private readonly supabase: SupabaseAuthService,
     private readonly auditoria: AuditoriaService,
     private readonly notificacoes: NotificacaoService,
+    private readonly privacidade: PrivacidadeService,
   ) {}
 
   async cadastrar(dados: CadastroRequest): Promise<void> {
     // Conferências baratas ANTES de criar a credencial: evitam a compensação no
     // caso mais comum de erro.
+    const versaoVigente = politicaVigente().versao;
+    if (dados.aceitePolitica !== versaoVigente) {
+      throw new PoliticaDesatualizadaError(versaoVigente);
+    }
+
     if ((await this.prisma.usuario.findUnique({ where: { email: dados.email } })) !== null) {
       throw new EmailJaCadastradoError();
     }
@@ -64,6 +72,9 @@ export class CadastroService {
     try {
       await this.prisma.$transaction(async (tx) => {
         await tx.usuario.create({ data: { id: usuarioId, email: dados.email, nome: dados.nome } });
+
+        // F24 — o aceite nasce com a conta, na mesma transação (DEC-225).
+        await this.privacidade.registrarAceite(tx, usuarioId, dados.aceitePolitica, 'cadastro');
 
         if (dados.tipo === 'MEDICO') {
           const medico = await tx.medico.create({
