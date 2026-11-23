@@ -84,7 +84,7 @@ export function Login({
 
   return (
     <main className="flex min-h-dvh flex-col justify-center px-5 py-10">
-      <div className="mx-auto w-full max-w-sm space-y-8">
+      <div className="mx-auto w-full max-w-sm space-y-8 lg:grid lg:max-w-4xl lg:grid-cols-2 lg:items-center lg:gap-16 lg:space-y-0">
         <header>
           <MarcaDoApp />
           <h1
@@ -99,64 +99,70 @@ export function Login({
           </h1>
         </header>
 
-        <TeseDoProduto />
+        <div className="space-y-8">
+          <TeseDoProduto />
+          <form onSubmit={(e) => void enviar(e)} className="space-y-4" noValidate>
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                inputMode="email"
+                autoComplete="username"
+                autoCapitalize="none"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                aria-invalid={errosDeCampo['email'] !== undefined}
+                aria-describedby={errosDeCampo['email'] !== undefined ? 'erro-email' : undefined}
+              />
+              {errosDeCampo['email'] !== undefined && (
+                <p id="erro-email" className="text-xs text-vazio">
+                  {errosDeCampo['email']}
+                </p>
+              )}
+            </div>
 
-        <form onSubmit={(e) => void enviar(e)} className="space-y-4" noValidate>
-          <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input
-              id="email"
-              type="email"
-              inputMode="email"
-              autoComplete="username"
-              autoCapitalize="none"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              aria-invalid={errosDeCampo['email'] !== undefined}
-              aria-describedby={errosDeCampo['email'] !== undefined ? 'erro-email' : undefined}
-            />
-            {errosDeCampo['email'] !== undefined && (
-              <p id="erro-email" className="text-xs text-vazio">
-                {errosDeCampo['email']}
+            <div className="space-y-2">
+              <Label htmlFor="senha">Senha</Label>
+              <Input
+                id="senha"
+                type="password"
+                autoComplete="current-password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                aria-invalid={errosDeCampo['senha'] !== undefined}
+                aria-describedby={errosDeCampo['senha'] !== undefined ? 'erro-senha' : undefined}
+              />
+              {errosDeCampo['senha'] !== undefined && (
+                <p id="erro-senha" className="text-xs text-vazio">
+                  {errosDeCampo['senha']}
+                </p>
+              )}
+            </div>
+
+            {erro !== null && (
+              <p
+                role="alert"
+                className="rounded-lg border border-vazio/30 bg-vazio-fundo px-3 py-2.5 text-sm text-vazio"
+              >
+                {erro}
               </p>
             )}
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="senha">Senha</Label>
-            <Input
-              id="senha"
-              type="password"
-              autoComplete="current-password"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              aria-invalid={errosDeCampo['senha'] !== undefined}
-              aria-describedby={errosDeCampo['senha'] !== undefined ? 'erro-senha' : undefined}
-            />
-            {errosDeCampo['senha'] !== undefined && (
-              <p id="erro-senha" className="text-xs text-vazio">
-                {errosDeCampo['senha']}
-              </p>
-            )}
-          </div>
+            <Button type="submit" tamanho="grande" className="w-full" disabled={enviando}>
+              {enviando ? 'Entrando…' : 'Entrar'}
+            </Button>
 
-          {erro !== null && (
-            <p
-              role="alert"
-              className="rounded-lg border border-vazio/30 bg-vazio-fundo px-3 py-2.5 text-sm text-vazio"
+            <Button
+              type="button"
+              variante="discreto"
+              className="w-full hover:bg-transparent hover:underline"
+              onClick={aoCriarConta}
             >
-              {erro}
-            </p>
-          )}
-
-          <Button type="submit" tamanho="grande" className="w-full" disabled={enviando}>
-            {enviando ? 'Entrando…' : 'Entrar'}
-          </Button>
-
-          <Button type="button" variante="discreto" className="w-full" onClick={aoCriarConta}>
-            Criar conta
-          </Button>
-        </form>
+              Criar conta
+            </Button>
+          </form>
+        </div>
       </div>
     </main>
   );
