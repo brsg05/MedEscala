@@ -11,7 +11,8 @@
  */
 import { PrismaClient, Perfil } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
-import { calcularRetencoes } from '@medescala/contracts';
+import { calcularRetencoes, politicaVigente } from '@medescala/contracts';
+import { hashDaPolitica } from '../src/modules/privacidade/privacidade.service';
 import { semearCenarios } from './seed-cenarios';
 import type { Prisma } from '@prisma/client';
 import {
@@ -267,8 +268,28 @@ async function principal(): Promise<void> {
   await semearInstituicaoPendente();
   await semearDisponibilidade();
   await semearCenarios(prisma, garantirCredencial);
+  await semearAceitesDaPolitica();
 
   console.log(`\nSenha de todos: ${SENHA}`);
+}
+
+/**
+ * F24 — todo usuário da demonstração já aceitou a política vigente; sem isso, o
+ * guard do aceite (DEC-225) prenderia cada um na tela de aceite. Fica no fim
+ * para cobrir quem qualquer etapa anterior criou.
+ */
+async function semearAceitesDaPolitica(): Promise<void> {
+  const vigente = politicaVigente();
+  const usuarios = await prisma.usuario.findMany({ select: { id: true } });
+  const { count } = await prisma.aceitePolitica.createMany({
+    data: usuarios.map((u) => ({
+      usuarioId: u.id,
+      versao: vigente.versao,
+      hashTexto: hashDaPolitica(vigente),
+    })),
+    skipDuplicates: true,
+  });
+  console.log(`aceites      ${String(count)} novo(s) da política ${vigente.versao}`);
 }
 
 /**

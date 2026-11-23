@@ -18,3 +18,4 @@ export * from './termos.js';
 export * from './fiscal.js';
 export * from './dominio.js';
 export * from './notificacoes.js';
+export * from './privacidade.js';

@@ -55,6 +55,7 @@ model Usuario {
   refreshTokens RefreshToken[]
   medico        Medico?
   notificacoes  Notificacao[]
+  aceites       AceitePolitica[]
 
   @@map("usuario")
 }
@@ -805,4 +806,28 @@ model DocumentoFiscal {
 
   @@index([prestadorMedicoId, status])
   @@map("documento_fiscal")
+}
+
+// --- F24 — política de privacidade e aceite (ADR-015, DEC-224 a DEC-227) ------
+
+/// Registro do aceite de UMA versão da política de privacidade.
+///
+/// O texto da política mora versionado em `@medescala/contracts`; aqui fica a
+/// prova: quem aceitou, qual versão, quando e o hash do texto exato que leu.
+/// Versão nova não apaga a anterior — gera um aceite novo.
+///
+/// O banco recusa UPDATE (supabase/policies/009): um aceite não se reescreve.
+/// DELETE só acontece em cascata, quando a própria conta é removida.
+model AceitePolitica {
+  id        String   @id @default(uuid()) @db.Uuid
+  usuarioId String   @map("usuario_id") @db.Uuid
+  versao    String   @db.VarChar(40)
+  /// SHA-256, em hexadecimal, do texto canônico da versão aceita.
+  hashTexto String   @map("hash_texto") @db.Char(64)
+  aceitoEm  DateTime @default(now()) @map("aceito_em") @db.Timestamptz(6)
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, versao])
+  @@map("aceite_politica")
 }

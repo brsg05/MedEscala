@@ -16,6 +16,8 @@ import { TermosModule } from './modules/termos/termos.module';
 import { IntegracoesModule } from './modules/integracoes/integracoes.module';
 import { FinanceiroModule } from './modules/financeiro/financeiro.module';
 import { OperadorModule } from './modules/operador/operador.module';
+import { PrivacidadeModule } from './modules/privacidade/privacidade.module';
+import { AceiteDaPoliticaGuard } from './modules/privacidade/aceite.guard';
 import { RepasseModule } from './modules/repasse/repasse.module';
 import { VagasModule } from './modules/vagas/vagas.module';
 import { CsrfGuard } from './modules/auth/guards/csrf.guard';
@@ -42,6 +44,7 @@ import { PerfisGuard } from './modules/auth/guards/perfis.guard';
     }),
     PrismaModule,
     AuditoriaModule,
+    PrivacidadeModule,
     NotificacaoModule,
     TermosModule,
     IntegracoesModule,
@@ -59,10 +62,12 @@ import { PerfisGuard } from './modules/auth/guards/perfis.guard';
     // A ORDEM IMPORTA. O Nest executa os guards globais na ordem de registro:
     //   1. CSRF   — mais barato, e precisa valer até em rota @Publico() de mutação;
     //   2. JWT    — resolve identidade e perfis, anexando à requisição;
-    //   3. Perfis — depende do que o JWT anexou.
+    //   3. Perfis — depende do que o JWT anexou;
+    //   4. Aceite — F24: sem aceite da política vigente, nada além de ler e aceitar.
     { provide: APP_GUARD, useClass: CsrfGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PerfisGuard },
+    { provide: APP_GUARD, useExisting: AceiteDaPoliticaGuard },
 
     { provide: APP_FILTER, useClass: DominioExceptionFilter },
   ],

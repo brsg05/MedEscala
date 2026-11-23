@@ -106,6 +106,10 @@ const CHECAGENS: readonly Checagem[] = [
     sql: `SELECT 1 FROM pg_indexes WHERE indexname = 'pagamento_uma_perna_viva'`,
   },
   {
+    nome: 'aceite da política imutável (F24)',
+    sql: `SELECT 1 FROM pg_trigger WHERE tgname = 'aceite_politica_imutavel' AND NOT tgisinternal`,
+  },
+  {
     nome: 'RLS ligada em todas as tabelas de domínio',
     sql: `SELECT 1 FROM pg_class c
           JOIN pg_namespace n ON n.oid = c.relnamespace

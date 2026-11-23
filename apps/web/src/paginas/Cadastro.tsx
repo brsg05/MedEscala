@@ -1,8 +1,14 @@
-import { useState, type FormEvent } from 'react';
-import { CadastroRequest, UfBrasileira, type UsuarioAutenticado } from '@medescala/contracts';
+import { useEffect, useState, type FormEvent } from 'react';
+import {
+  CadastroRequest,
+  UfBrasileira,
+  type PoliticaResponse,
+  type UsuarioAutenticado,
+} from '@medescala/contracts';
 import { api, ErroDaApi } from '@/api/cliente';
 import { MarcaDoApp } from '@/componentes/AppShell';
-import { ErroDeFormulario } from '@/componentes/Painel';
+import { ErroDeFormulario, Painel } from '@/componentes/Painel';
+import { PoliticaDePrivacidade } from '@/componentes/PoliticaDePrivacidade';
 import { Button } from '@/componentes/ui/button';
 import { Input } from '@/componentes/ui/input';
 import { Label } from '@/componentes/ui/label';
@@ -28,6 +34,19 @@ export function Cadastro({ aoEntrar, aoVoltar }: Props): React.JSX.Element {
   const [errosDeCampo, setErrosDeCampo] = useState<Record<string, string>>({});
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // F24 — sem aceite da política vigente não há conta (DEC-225).
+  const [politica, setPolitica] = useState<PoliticaResponse | null>(null);
+  const [aceitou, setAceitou] = useState(false);
+  const [lendoPolitica, setLendoPolitica] = useState(false);
+
+  useEffect(() => {
+    api
+      .politica()
+      .then(setPolitica)
+      .catch(() => {
+        setErro('Não foi possível carregar a política de privacidade. Recarregue a página.');
+      });
+  }, []);
 
   function campo(nome: string): {
     value: string;
@@ -44,6 +63,9 @@ export function Cadastro({ aoEntrar, aoVoltar }: Props): React.JSX.Element {
     setErro(null);
     setErrosDeCampo({});
 
+    // Vazio quando não marcou: o schema recusa e a mensagem aparece no campo.
+    const aceitePolitica = aceitou ? (politica?.versao ?? '') : '';
+
     const bruto =
       tipo === 'MEDICO'
         ? {
@@ -54,6 +76,7 @@ export function Cadastro({ aoEntrar, aoVoltar }: Props): React.JSX.Element {
             crm: campos['crm'],
             crmUf: campos['crmUf'],
             especialidade: campos['especialidade'],
+            aceitePolitica,
           }
         : {
             tipo,
@@ -62,6 +85,7 @@ export function Cadastro({ aoEntrar, aoVoltar }: Props): React.JSX.Element {
             senha: campos['senha'],
             instituicaoNome: campos['instituicaoNome'],
             cnpj: campos['cnpj'],
+            aceitePolitica,
           };
 
     // Mesmo schema que a api usa no servidor (ADR-005).
@@ -227,6 +251,32 @@ export function Cadastro({ aoEntrar, aoVoltar }: Props): React.JSX.Element {
             <Erro nome="senha" />
           </div>
 
+          <div className="space-y-2">
+            <label className="flex items-start gap-3 text-sm text-gelo-2">
+              <input
+                type="checkbox"
+                checked={aceitou}
+                onChange={(e) => setAceitou(e.target.checked)}
+                disabled={politica === null}
+                aria-invalid={errosDeCampo['aceitePolitica'] !== undefined}
+                className="mt-0.5 size-5 shrink-0 accent-turno"
+              />
+              <span>
+                Li e aceito a{' '}
+                <button
+                  type="button"
+                  className="font-medium text-turno underline underline-offset-2"
+                  onClick={() => setLendoPolitica(true)}
+                  disabled={politica === null}
+                >
+                  política de privacidade
+                </button>
+                .
+              </span>
+            </label>
+            <Erro nome="aceitePolitica" />
+          </div>
+
           <ErroDeFormulario mensagem={erro} />
 
           <Button type="submit" tamanho="grande" className="w-full" disabled={enviando}>
@@ -238,6 +288,21 @@ export function Cadastro({ aoEntrar, aoVoltar }: Props): React.JSX.Element {
           </Button>
         </form>
       </div>
+
+      {lendoPolitica && politica !== null ? (
+        <Painel titulo="Política de privacidade" aoFechar={() => setLendoPolitica(false)}>
+          <PoliticaDePrivacidade politica={politica} />
+          <Button
+            className="mt-5 w-full"
+            onClick={() => {
+              setAceitou(true);
+              setLendoPolitica(false);
+            }}
+          >
+            Aceitar
+          </Button>
+        </Painel>
+      ) : null}
     </main>
   );
 }

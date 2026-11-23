@@ -355,3 +355,28 @@ export class SubcontratacaoNaoPermitidaError extends ErroDominio {
     super('Esta instituição não aceita subcontratação (modelo B); use o modelo A');
   }
 }
+
+// --- privacidade (F24, ADR-015) -------------------------------------------------
+
+/**
+ * A versão enviada não é a vigente — a pessoa leu um texto que já mudou. Pedir
+ * de novo, com a versão nova na tela, em vez de registrar aceite de texto velho.
+ */
+export class PoliticaDesatualizadaError extends ErroDominio {
+  readonly codigo = 'POLITICA_DESATUALIZADA';
+
+  constructor(versaoVigente: string) {
+    super('A política de privacidade mudou. Leia a versão atual para continuar', {
+      versaoVigente,
+    });
+  }
+}
+
+/** DEC-225 — sem aceite da versão vigente, a conta não usa a plataforma. */
+export class AceiteDaPoliticaPendenteError extends ErroDominio {
+  readonly codigo = 'ACEITE_DA_POLITICA_PENDENTE';
+
+  constructor(versaoVigente: string) {
+    super('Aceite a política de privacidade vigente para continuar', { versaoVigente });
+  }
+}

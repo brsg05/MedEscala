@@ -3,9 +3,12 @@ import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { COOKIE_CSRF_TOKEN, HEADER_CSRF_TOKEN } from '@medescala/contracts';
+import { COOKIE_CSRF_TOKEN, HEADER_CSRF_TOKEN, politicaVigente } from '@medescala/contracts';
 import { SupabaseAuthService } from '../../src/modules/auth/supabase-auth.service';
 import { criarAppDeTeste, cookiesDe, limparPlantoesDoSetor, valorDoCookie } from './app-de-teste';
+
+/** F24 — toda conta nasce com o aceite da política vigente. */
+const POLITICA = politicaVigente().versao;
 
 const ORIGEM = 'http://localhost:5173';
 const SENHA = process.env['SEED_SENHA_PADRAO'] ?? 'medescala123';
@@ -134,6 +137,7 @@ describe('instituição e cadastro aberto (e2e)', () => {
           nome: 'Médica Recém Cadastrada',
           email,
           senha: 'senha-segura-1',
+          aceitePolitica: POLITICA,
           crm: String(Math.floor(100000 + Math.random() * 899999)),
           crmUf: 'PE',
           especialidade: 'Clínica Médica',
@@ -165,6 +169,7 @@ describe('instituição e cadastro aberto (e2e)', () => {
           nome: 'Gestora de Teste',
           email,
           senha: 'senha-segura-1',
+          aceitePolitica: POLITICA,
           instituicaoNome: 'Hospital de Teste',
           cnpj,
         })
@@ -188,6 +193,7 @@ describe('instituição e cadastro aberto (e2e)', () => {
           nome: 'Tentativa Duplicada',
           email: 'medico@medescala.test',
           senha: 'senha-segura-1',
+          aceitePolitica: POLITICA,
           crm: '999001',
           crmUf: 'SP',
           especialidade: 'Clínica Médica',
@@ -206,6 +212,7 @@ describe('instituição e cadastro aberto (e2e)', () => {
           nome: 'Tentativa de Clonar Hospital',
           email: `clone.${unico()}@teste.medescala`,
           senha: 'senha-segura-1',
+          aceitePolitica: POLITICA,
           instituicaoNome: 'Hospital Clonado',
           cnpj: HOSPITAL_CNPJ,
         })
@@ -298,6 +305,7 @@ describe('instituição e cadastro aberto (e2e)', () => {
           nome: 'Gestor a Aprovar',
           email,
           senha: 'senha-segura-1',
+          aceitePolitica: POLITICA,
           instituicaoNome: 'Hospital a Aprovar',
           cnpj,
         })

@@ -1,5 +1,10 @@
+import { useState } from 'react';
 import { ROTULO_PERFIL, type UsuarioAutenticado } from '@medescala/contracts';
+import { api } from '@/api/cliente';
+import { Painel } from '@/componentes/Painel';
+import { PoliticaDePrivacidade } from '@/componentes/PoliticaDePrivacidade';
 import { Button } from '@/componentes/ui/button';
+import { useRecurso } from '@/hooks/useRecurso';
 import { Etiqueta } from '@/componentes/ui/etiqueta';
 
 /**
@@ -62,6 +67,8 @@ export function Conta({
         )}
       </section>
 
+      <Privacidade />
+
       <section aria-label="Sessão" className="rounded-xl border border-borda bg-tinta-2 p-5">
         <p className="sinal">Sessão</p>
         <Button variante="contorno" className="mt-4 w-full" onClick={aoSair}>
@@ -69,5 +76,41 @@ export function Conta({
         </Button>
       </section>
     </div>
+  );
+}
+
+/** F24 — qual versão da política a pessoa aceitou, e quando; e o texto dela. */
+function Privacidade(): React.JSX.Element {
+  const aceite = useRecurso(() => api.situacaoDoAceite());
+  const politica = useRecurso(() => api.politica());
+  const [lendo, setLendo] = useState(false);
+
+  return (
+    <section aria-label="Privacidade" className="rounded-xl border border-borda bg-tinta-2 p-5">
+      <p className="sinal">Privacidade</p>
+      <p className="mt-2 text-sm text-gelo-2">
+        {aceite.carregando
+          ? 'Carregando…'
+          : aceite.dado?.aceitoEm != null
+            ? `Você aceitou a política ${aceite.dado.versaoAceita ?? ''} em ${new Date(
+                aceite.dado.aceitoEm,
+              ).toLocaleString('pt-BR')}.`
+            : 'Não foi possível consultar seu aceite agora.'}
+      </p>
+      <Button
+        variante="contorno"
+        className="mt-4 w-full"
+        disabled={politica.dado === null}
+        onClick={() => setLendo(true)}
+      >
+        Ver política de privacidade
+      </Button>
+
+      {lendo && politica.dado !== null ? (
+        <Painel titulo="Política de privacidade" aoFechar={() => setLendo(false)}>
+          <PoliticaDePrivacidade politica={politica.dado} />
+        </Painel>
+      ) : null}
+    </section>
   );
 }
