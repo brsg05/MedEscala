@@ -4,7 +4,7 @@ import { FUSO_LOCAL, somarDias } from '@/lib/datas';
 import { cn } from '@/lib/utils';
 import type { BlocoDePlantao, EstadoDoBloco } from './TrilhoDeCobertura';
 
-const ALTURA_HORA = 60;
+const ALTURA_HORA = 30;
 const DIAS = ['seg', 'ter', 'qua', 'qui', 'sex', 'sáb', 'dom'] as const;
 const CORES: Record<EstadoDoBloco, string> = {
   turno: 'border-turno/50 bg-turno/25 text-gelo',
@@ -144,13 +144,10 @@ export function CalendarioSemanal({
             >
               <span className="block text-xs uppercase">{DIAS[indice]}</span>
               <span
-                className="dado font-semibold lg:hidden"
+                className="dado text-[0.625rem] font-semibold sm:text-xs lg:text-sm"
                 aria-label={formatarData(dia, FUSO_LOCAL)}
               >
-                {dia.getDate()}
-              </span>
-              <span className="dado hidden font-semibold lg:inline">
-                {formatarData(dia, FUSO_LOCAL)}
+                {formatarData(dia, FUSO_LOCAL).slice(0, 5)}
               </span>
             </div>
           ))}
