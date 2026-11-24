@@ -257,7 +257,7 @@ describe('modo médico', () => {
     expect(screen.queryByRole('link', { name: 'Estrutura' })).toBeNull();
   });
 
-  it('distingue o dia vazio do estado explicativo — duas mensagens, não a mesma duas vezes', async () => {
+  it('mostra a semana vazia', async () => {
     responderPorRota({
       '/auth/me': () => json(200, MEDICA),
       '/medicos/me/agenda': () => json(200, { plantoes: [], alertaCargaHoraria: null }),
@@ -265,8 +265,8 @@ describe('modo médico', () => {
     render(<App />);
     await screen.findByText('Sua escala');
 
-    expect(await screen.findByText('Nenhum plantão neste dia')).toBeDefined();
-    expect(screen.getByText('Dia livre na sua escala')).toBeDefined();
+    expect(await screen.findByText('Semana livre na sua escala')).toBeDefined();
+    expect(screen.getByLabelText('Cobertura da semana')).toBeDefined();
   });
 
   it('mostra o erro da api em vez de uma tela vazia enganosa', async () => {
@@ -336,6 +336,51 @@ describe('modo instituição (DEC-061)', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: /Hospital Escola/u }));
 
     expect(await screen.findByText('Escala da instituição')).toBeDefined();
+  });
+});
+
+describe('navegação semanal', () => {
+  it.each([
+    {
+      perfil: MEDICA,
+      rota: '/medicos/me/agenda',
+      resposta: { plantoes: [], alertaCargaHoraria: null },
+    },
+    { perfil: CHEFIA, rota: `/instituicoes/${HOSPITAL}/plantoes`, resposta: [] },
+  ])('consulta a semana e avança sete dias para $rota', async ({ perfil, rota, resposta }) => {
+    responderPorRota({
+      '/auth/me': () => json(200, perfil),
+      [`/instituicoes/${HOSPITAL}/estrutura`]: () => json(200, estrutura('ATIVA')),
+      [rota]: () => json(200, resposta),
+    });
+    render(<App />);
+
+    await screen.findByLabelText('Cobertura da semana');
+    await waitFor(() => {
+      expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes(rota))).toHaveLength(
+        1,
+      );
+    });
+    const primeira = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes(rota));
+    const consulta = new URL(String(primeira?.[0]));
+    const inicio = new Date(consulta.searchParams.get('desde') ?? '');
+    const fim = new Date(consulta.searchParams.get('ate') ?? '');
+    expect(inicio.getDay()).toBe(1);
+    expect(inicio.getHours()).toBe(0);
+    const esperado = new Date(inicio);
+    esperado.setDate(esperado.getDate() + 7);
+    expect(fim.getTime()).toBe(esperado.getTime());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Próxima semana' }));
+    await waitFor(() => {
+      expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes(rota))).toHaveLength(
+        2,
+      );
+    });
+    const chamadas = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes(rota));
+    const proxima = new URL(String(chamadas[1]?.[0]));
+    expect(proxima.searchParams.get('desde')).toBe(fim.toISOString());
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar para hoje' }));
   });
 });
 

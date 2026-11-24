@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { matchPath, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import type { UsuarioAutenticado } from '@medescala/contracts';
 import { cn } from '@/lib/utils';
 import { lembrarModo, modoDaRota, modoDeContexto, modosDisponiveis, type Modo } from '@/modo';
@@ -121,6 +121,9 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
   // Fora de um modo (Conta), a navegação continua sendo a do último modo usado.
   const contexto = modoDeContexto(modos, pathname);
   const navegacao = navegacaoDo(contexto);
+  const escala =
+    matchPath('/escala', pathname) !== null ||
+    matchPath('/instituicao/:instituicaoId/escala', pathname) !== null;
 
   useEffect(() => {
     if (ativo !== null) {
@@ -193,7 +196,7 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
 
         {/* `pb-24` abre espaço para a barra inferior não cobrir o último elemento. */}
         <main className="flex-1 px-4 pt-5 pb-24 md:px-6 md:pt-6 md:pb-8">
-          <div className="mx-auto w-full max-w-2xl">
+          <div className={cn('mx-auto w-full max-w-2xl', escala && '2xl:max-w-7xl')}>
             <Outlet />
           </div>
         </main>
