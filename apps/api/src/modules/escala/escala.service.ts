@@ -169,7 +169,8 @@ export class EscalaService {
       where: {
         medicoExecutanteId: medicoId,
         status: { not: 'CANCELADO' },
-        inicio: { gte: desde, lt: ate },
+        inicio: { lt: ate },
+        fim: { gt: desde },
       },
       include: PLANTAO_COMPLETO,
       orderBy: { inicio: 'asc' },
