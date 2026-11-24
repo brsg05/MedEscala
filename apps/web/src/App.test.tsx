@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
@@ -250,9 +250,11 @@ describe('modo médico', () => {
     render(<App />);
     await screen.findByText('Sua escala');
 
-    for (const secao of ['Escala', 'Disponível', 'Decisões', 'Repasses', 'Conta']) {
+    for (const secao of ['Escala', 'Disponível', 'Decisões', 'Repasses']) {
       expect(screen.getAllByRole('link', { name: secao }).length).toBeGreaterThan(0);
     }
+    expect(screen.queryByRole('button', { name: 'Conta' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Conta' })).toBeNull();
     // Não vê nada da instituição.
     expect(screen.queryByRole('link', { name: 'Estrutura' })).toBeNull();
   });
@@ -825,23 +827,115 @@ describe('vaga aberta (F10)', () => {
 });
 
 describe('Conta (DEC-183)', () => {
-  it('em Conta, as abas do modo continuam lá e levam de volta', async () => {
+  const politica = {
+    versao: '1.0',
+    vigenteDesde: '2026-01-01',
+    resumo: 'Resumo da política',
+    itens: [],
+    compromissos: [],
+    hash: 'a'.repeat(64),
+  };
+  const aceite = {
+    versaoVigente: '1.0',
+    versaoAceita: '1.0',
+    aceitoEm: '2026-01-01T12:00:00.000Z',
+    pendente: false,
+  };
+
+  it('abre pelo perfil sem sair da tela atual', async () => {
     responderPorRota({
       '/auth/me': () => json(200, MEDICA),
       '/medicos/me/agenda': () => json(200, { plantoes: [], alertaCargaHoraria: null }),
+      '/privacidade/aceite': () => json(200, aceite),
+      '/privacidade/politica': () => json(200, politica),
     });
     render(<App />);
     await screen.findByText('Sua escala');
 
-    fireEvent.click(screen.getAllByRole('link', { name: 'Conta' })[0] as HTMLElement);
+    const usuario = screen.getByRole('button', { name: 'Conta de Ana Medeiros' });
+    usuario.focus();
+    fireEvent.click(usuario);
+    const dialogo = screen.getByRole('dialog', { name: 'Sua conta' });
+    expect(within(dialogo).getByText(MEDICA.email)).toBeDefined();
+    expect(within(dialogo).getByRole('region', { name: 'Perfis de acesso' })).toBeDefined();
+    expect(window.location.pathname).toBe('/escala');
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Fechar' }));
+    expect(screen.queryByRole('dialog', { name: 'Sua conta' })).toBeNull();
+    expect(document.activeElement).toBe(usuario);
+    expect(screen.getByText('Sua escala')).toBeDefined();
 
-    // Antes, em /conta só sobrava a aba Conta.
-    for (const secao of ['Escala', 'Disponível', 'Decisões', 'Repasses']) {
-      expect((await screen.findAllByRole('link', { name: secao })).length).toBeGreaterThan(0);
-    }
+    fireEvent.click(usuario);
+    expect(screen.getByRole('dialog', { name: 'Sua conta' })).toBeDefined();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Sua conta' })).toBeNull();
+  });
 
-    fireEvent.click(screen.getAllByRole('link', { name: 'Escala' })[0] as HTMLElement);
+  it('mostra a política no modal e volta à conta', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [], alertaCargaHoraria: null }),
+      '/privacidade/aceite': () => json(200, aceite),
+      '/privacidade/politica': () => json(200, politica),
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Conta de Ana Medeiros' }));
+    const botao = screen.getByRole('button', { name: 'Ver política de privacidade' });
+    await waitFor(() => expect((botao as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(botao);
+
+    expect(screen.getByRole('dialog', { name: 'Política de privacidade' })).toBeDefined();
+    expect(screen.getByText('Resumo da política')).toBeDefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar para a conta' }));
+    expect(screen.getByRole('dialog', { name: 'Sua conta' })).toBeDefined();
+  });
+
+  it('abre links antigos de conta sem perder o modo', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/medicos/me/agenda': () => json(200, { plantoes: [], alertaCargaHoraria: null }),
+      '/privacidade/aceite': () => json(200, aceite),
+      '/privacidade/politica': () => json(200, politica),
+    });
+    window.history.replaceState({}, '', '/conta');
+    render(<App />);
+
+    expect(await screen.findByRole('dialog', { name: 'Sua conta' })).toBeDefined();
+    await waitFor(() => expect(window.location.pathname).toBe('/escala'));
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar' }));
     expect(await screen.findByText('Sua escala')).toBeDefined();
+  });
+
+  it('mantém a conta acessível quando o usuário ainda não possui perfil', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, usuario([])),
+      '/privacidade/aceite': () => json(200, aceite),
+      '/privacidade/politica': () => json(200, politica),
+    });
+    render(<App />);
+
+    const dialogo = await screen.findByRole('dialog', { name: 'Sua conta' });
+    expect(within(dialogo).getByText(/ainda não tem perfil/u)).toBeDefined();
+    fireEvent.click(within(dialogo).getByRole('button', { name: 'Fechar' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Conta de Ana Medeiros' }));
+    expect(screen.getByRole('dialog', { name: 'Sua conta' })).toBeDefined();
+  });
+
+  it('permite sair da sessão pelo modal', async () => {
+    responderPorRota({
+      '/auth/me': () => json(200, MEDICA),
+      '/auth/logout': () => json(200, {}),
+      '/medicos/me/agenda': () => json(200, { plantoes: [], alertaCargaHoraria: null }),
+      '/privacidade/aceite': () => json(200, aceite),
+      '/privacidade/politica': () => json(200, politica),
+    });
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Conta de Ana Medeiros' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sair' }));
+
+    expect(await screen.findByLabelText('E-mail')).toBeDefined();
+    expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/auth/logout'))).toBe(
+      true,
+    );
   });
 });
 

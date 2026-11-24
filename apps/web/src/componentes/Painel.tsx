@@ -44,9 +44,9 @@ export function Painel({
     const anterior = document.activeElement as HTMLElement | null;
 
     const primeiro = caixa.current?.querySelector<HTMLElement>(
-      'input, select, textarea, button:not([data-fechar])',
+      'input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not([data-fechar]):not(:disabled)',
     );
-    primeiro?.focus();
+    (primeiro ?? caixa.current?.querySelector<HTMLElement>('[data-fechar]'))?.focus();
 
     function aoTeclar(evento: KeyboardEvent): void {
       if (evento.key === 'Escape') {
