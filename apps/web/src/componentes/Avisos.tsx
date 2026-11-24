@@ -10,7 +10,7 @@ import { Painel } from './Painel';
 /**
  * F22 — os avisos in-app (DEC-121, DEC-127).
  *
- * Mora no topo, ao lado da conta, em qualquer modo: um convite com prazo de 1h
+ * Mora ao lado da conta, em qualquer modo: um convite com prazo de 1h
  * (DEC-090) não pode depender de a pessoa abrir a aba certa para ser visto.
  */
 export function Avisos(): React.JSX.Element {
@@ -71,7 +71,7 @@ export function Avisos(): React.JSX.Element {
       </button>
 
       {aberto && (
-        <Painel titulo="Avisos" aoFechar={() => setAberto(false)}>
+        <Painel titulo="Avisos" aoFechar={() => setAberto(false)} animarAbertura>
           {itens.length === 0 ? (
             <p className="py-6 text-center text-sm text-gelo-3">Nenhum aviso.</p>
           ) : (

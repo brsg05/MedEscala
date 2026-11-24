@@ -1,10 +1,12 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { motion, useReducedMotion } from 'motion/react';
 
 interface Props {
   titulo: string;
   aoFechar: () => void;
   children: ReactNode;
+  animarAbertura?: boolean;
 }
 
 /**
@@ -20,9 +22,16 @@ interface Props {
  * ficava preso a ele — foi o que aconteceu com os avisos, abertos de dentro do
  * cabeçalho borrado (DEC-192).
  */
-export function Painel({ titulo, aoFechar, children }: Props): React.JSX.Element {
+export function Painel({
+  titulo,
+  aoFechar,
+  children,
+  animarAbertura = false,
+}: Props): React.JSX.Element {
   const idTitulo = useId();
   const caixa = useRef<HTMLDivElement>(null);
+  const reduzirMovimento = useReducedMotion();
+  const animar = animarAbertura && !reduzirMovimento;
 
   // `aoFechar` costuma ser uma função nova a cada render do pai. Se ela fosse
   // dependência do efeito abaixo, cada tecla digitada refaria o efeito e
@@ -53,20 +62,26 @@ export function Painel({ titulo, aoFechar, children }: Props): React.JSX.Element
   }, []);
 
   return createPortal(
-    <div
+    <motion.div
       role="dialog"
       aria-modal="true"
       aria-labelledby={idTitulo}
       className="fixed inset-0 z-40 flex items-end justify-center bg-tinta/80 backdrop-blur-sm sm:items-center sm:p-4"
+      initial={animar ? { opacity: 0 } : false}
+      animate={{ opacity: 1 }}
+      transition={{ duration: animar ? 0.2 : 0 }}
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) {
           aoFechar();
         }
       }}
     >
-      <div
+      <motion.div
         ref={caixa}
         className="max-h-[90dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-borda bg-tinta-2 p-5 pb-8 sm:rounded-2xl sm:pb-5"
+        initial={animar ? { opacity: 0, y: 24 } : false}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: animar ? 0.25 : 0, ease: 'easeOut' }}
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2 id={idTitulo} className="text-lg font-semibold text-gelo">
@@ -83,8 +98,8 @@ export function Painel({ titulo, aoFechar, children }: Props): React.JSX.Element
           </button>
         </div>
         {children}
-      </div>
-    </div>,
+      </motion.div>
+    </motion.div>,
     document.body,
   );
 }

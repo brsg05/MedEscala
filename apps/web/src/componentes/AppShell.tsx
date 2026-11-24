@@ -140,7 +140,7 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
       {/* Navegação lateral no desktop: a estação da chefia é um computador. */}
       <nav
         aria-label="Seções"
-        className="hidden w-60 shrink-0 border-r border-borda bg-tinta-2 p-4 md:flex md:flex-col"
+        className="hidden w-60 shrink-0 border-r border-borda bg-tinta-2 p-4 pb-24 md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:overflow-y-auto"
       >
         <MarcaDoApp className="mb-6 px-2" />
         <SeletorDeModo modos={modos} ativo={contexto} className="mb-6" />
@@ -169,19 +169,24 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
       </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-borda bg-tinta/95 px-4 backdrop-blur md:h-16 md:px-6">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-borda bg-tinta/95 px-4 backdrop-blur md:fixed md:top-auto md:bottom-0 md:left-0 md:h-20 md:w-60 md:border-t md:border-r md:border-b-0 md:bg-tinta-2 md:backdrop-blur-none">
           <MarcaDoApp className="shrink-0 md:hidden" />
           <SeletorDeModo modos={modos} ativo={contexto} className="min-w-0 md:hidden" compacto />
-          <div className="hidden md:block" />
 
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5 md:min-w-0 md:flex-1">
             <Avisos />
             <NavLink
               to="/conta"
-              className="dado flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tinta-3 text-xs font-semibold text-gelo-2 transition-colors hover:bg-borda"
+              className="flex min-w-0 items-center gap-2 rounded-lg text-gelo-2 transition-colors hover:text-gelo md:order-first md:flex-1"
               aria-label={`Conta de ${usuario.nome}`}
             >
-              {iniciais}
+              <span className="dado flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tinta-3 text-xs font-semibold transition-colors hover:bg-borda">
+                {iniciais}
+              </span>
+              <span className="hidden min-w-0 md:block">
+                <span className="block truncate text-sm font-medium">{usuario.nome}</span>
+                <span className="block text-xs text-gelo-3">Minha conta</span>
+              </span>
             </NavLink>
           </div>
         </header>
