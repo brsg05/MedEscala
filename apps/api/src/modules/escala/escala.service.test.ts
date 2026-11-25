@@ -23,11 +23,7 @@ describe('agendaDoMedico', () => {
       { id: 'depois', inicio: ate, fim: new Date('2026-11-30T08:00:00Z') },
     ];
     const findMany = vi.fn(
-      async ({
-        where,
-      }: {
-        where: { inicio: { gte?: Date; lt?: Date }; fim?: { gt?: Date } };
-      }) =>
+      async ({ where }: { where: { inicio: { gte?: Date; lt?: Date }; fim?: { gt?: Date } } }) =>
         plantoes.filter(
           (p) =>
             (where.inicio.gte === undefined || p.inicio >= where.inicio.gte) &&
