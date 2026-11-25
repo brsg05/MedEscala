@@ -28,7 +28,9 @@
     "db:verificar-policies": "pnpm --filter @medescala/api run db:verificar-policies",
     "db:nova-migration": "pnpm --filter @medescala/api run db:nova-migration",
     "dev:infra": "supabase start && docker compose up -d --wait",
-    "dev:infra:parar": "docker compose down && supabase stop"
+    "dev:infra:podman": "supabase start && docker-compose up -d --wait",
+    "dev:infra:parar": "docker compose down && supabase stop",
+    "dev:infra:parar:podman": "podman compose down && supabase stop"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

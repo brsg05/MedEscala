@@ -6,7 +6,6 @@ import { AceiteDaPolitica } from '@/componentes/AceiteDaPolitica';
 import { AppShell, MarcaDoApp } from '@/componentes/AppShell';
 import { modosDisponiveis, rotaInicial, type Modo } from '@/modo';
 import { Cadastro } from '@/paginas/Cadastro';
-import { Conta } from '@/paginas/Conta';
 import { Decisoes } from '@/paginas/Decisoes';
 import { Disponibilidade } from '@/paginas/Disponibilidade';
 import { Escala } from '@/paginas/Escala';
@@ -90,7 +89,7 @@ function AreaLogada({
   return (
     <BrowserRouter>
       <Routes>
-        <Route element={<AppShell usuario={usuario} />}>
+        <Route element={<AppShell usuario={usuario} aoSair={aoSair} />}>
           {/* modo médico */}
           <Route path="/escala" element={so('medico', <Escala />)} />
           <Route path="/disponibilidade" element={so('medico', <Disponibilidade />)} />
@@ -129,7 +128,18 @@ function AreaLogada({
           {/* modo operador */}
           <Route path="/operador" element={so('operador', <Operador />)} />
 
-          <Route path="/conta" element={<Conta usuario={usuario} aoSair={aoSair} />} />
+          <Route
+            path="/conta"
+            element={
+              inicio === '/conta' ? (
+                <p className="text-sm text-gelo-2">
+                  Sua conta ainda não tem perfil de acesso. Abra sua conta para mais informações.
+                </p>
+              ) : (
+                <Navigate to={inicio} replace />
+              )
+            }
+          />
           <Route path="*" element={<Navigate to={inicio} replace />} />
         </Route>
       </Routes>

@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 import {
   formatarCentavos,
-  formatarData,
+  formatarDataHora,
   formatarHora,
   ROTULO_STATUS_PLANTAO,
   type PlantaoResponse,
@@ -14,22 +14,20 @@ import { ErroDeFormulario } from '@/componentes/Painel';
 import { ExecucaoDoPlantao } from '@/componentes/ExecucaoDoPlantao';
 import { BotaoTermos } from '@/componentes/Termos';
 import { BotaoPagamento } from '@/componentes/Pagamento';
+import { CalendarioSemanal, NavegacaoSemanal } from '@/componentes/CalendarioSemanal';
 import { Button } from '@/componentes/ui/button';
 import { Etiqueta } from '@/componentes/ui/etiqueta';
 import {
   LegendaDeCobertura,
-  TrilhoDeCobertura,
   type BlocoDePlantao,
   type EstadoDoBloco,
 } from '@/componentes/TrilhoDeCobertura';
-import { inicioDoDia, UM_DIA_MS } from '@/lib/datas';
+import { FUSO_LOCAL, inicioDaSemana, somarDias } from '@/lib/datas';
 import { AvisoDePendencia } from './AvisoDePendencia';
 import { EscalarMedico } from './EscalarMedico';
 import { PublicarVaga } from './PublicarVaga';
 import { Trilha } from './Trilha';
 import { CandidaturasDaVaga, ConvidarParaVaga, FilaDaVaga } from './SelecaoDaVaga';
-
-const DIAS_DA_SEMANA = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'] as const;
 
 /** Na perspectiva da instituição, o que importa enxergar é o buraco. */
 function estadoParaInstituicao(status: PlantaoResponse['status']): EstadoDoBloco {
@@ -64,8 +62,8 @@ type Acao =
 /**
  * F06 e F12 vistos pela chefia — a escala da instituição.
  *
- * É a mesma régua de cobertura do médico, lida do outro lado: aqui o bloco
- * vermelho é a crise do dia, um turno sem ninguém. Daqui a chefia publica a vaga,
+ * É o mesmo calendário do médico, lido do outro lado: aqui o bloco vermelho é
+ * um turno sem ninguém. Daqui a chefia publica a vaga,
  * escala quem se ofereceu (DEC-062) e abre a trilha de qualquer plantão (F23).
  */
 export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }): React.JSX.Element {
@@ -77,34 +75,28 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
   const [dia, setDia] = useState(() => new Date());
   const [acao, setAcao] = useState<Acao | null>(null);
 
-  const zero = useMemo(() => inicioDoDia(dia), [dia]);
+  const inicio = useMemo(() => inicioDaSemana(dia), [dia]);
+  const fim = useMemo(() => somarDias(inicio, 7), [inicio]);
 
   const buscarEstrutura = useCallback(() => api.estrutura(instituicaoId), [instituicaoId]);
   const estrutura = useRecurso(buscarEstrutura, [instituicaoId]);
 
   const buscarPlantoes = useCallback(
-    () =>
-      // Um dia para trás: o plantão noturno da véspera invade o dia exibido.
-      api.plantoesDaInstituicao(
-        instituicaoId,
-        new Date(zero.getTime() - UM_DIA_MS),
-        new Date(zero.getTime() + UM_DIA_MS),
-      ),
-    [instituicaoId, zero],
+    () => api.plantoesDaInstituicao(instituicaoId, inicio, fim),
+    [instituicaoId, inicio, fim],
   );
-  const plantoes = useRecurso(buscarPlantoes, [instituicaoId, zero.getTime()]);
+  const plantoes = useRecurso(buscarPlantoes, [instituicaoId, inicio.getTime()]);
 
-  const doDia = useMemo(() => {
-    const fim = zero.getTime() + UM_DIA_MS;
+  const daSemana = useMemo(() => {
     return (plantoes.dado ?? []).filter(
       (p) =>
         p.status !== 'CANCELADO' &&
-        Date.parse(p.inicio) < fim &&
-        Date.parse(p.fim) > zero.getTime(),
+        Date.parse(p.inicio) < fim.getTime() &&
+        Date.parse(p.fim) > inicio.getTime(),
     );
-  }, [plantoes.dado, zero]);
+  }, [plantoes.dado, inicio, fim]);
 
-  const blocos: BlocoDePlantao[] = doDia.map((p) => ({
+  const blocos: BlocoDePlantao[] = daSemana.map((p) => ({
     id: p.id,
     inicio: p.inicio,
     fim: p.fim,
@@ -112,12 +104,11 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
     estado: estadoParaInstituicao(p.status),
   }));
 
-  const descobertos = doDia.filter(
+  const descobertos = daSemana.filter(
     (p) => p.status === 'ABERTO' || p.status === 'EM_SELECAO',
   ).length;
   const pendente = estrutura.dado?.instituicao.status === 'PENDENTE';
   const semSetor = (estrutura.dado?.unidades.flatMap((u) => u.setores) ?? []).length === 0;
-  const ehHoje = dia.toDateString() === new Date().toDateString();
 
   function aoConcluir(): void {
     setAcao(null);
@@ -129,62 +120,25 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
       <header>
         <p className="sinal">Escala da instituição</p>
 
-        <div className="mt-2 flex items-baseline justify-between gap-3">
-          <h1
-            className="text-2xl font-extrabold tracking-tight text-gelo"
-            style={{ fontFamily: 'var(--font-sinal)' }}
-          >
-            {DIAS_DA_SEMANA[dia.getDay()]}{' '}
-            <span className="dado font-semibold">{formatarData(dia)}</span>
-          </h1>
-
-          <div className="flex shrink-0 items-center gap-1">
-            <Button
-              variante="contorno"
-              tamanho="pequeno"
-              onClick={() => setDia((d) => new Date(d.getTime() - UM_DIA_MS))}
-              aria-label="Dia anterior"
-            >
-              ←
-            </Button>
-            <Button
-              variante="contorno"
-              tamanho="pequeno"
-              onClick={() => setDia((d) => new Date(d.getTime() + UM_DIA_MS))}
-              aria-label="Próximo dia"
-            >
-              →
-            </Button>
-          </div>
-        </div>
-
-        {!ehHoje && (
-          <button
-            type="button"
-            onClick={() => setDia(new Date())}
-            className="mt-2 text-xs font-medium text-turno hover:underline"
-          >
-            Voltar para hoje
-          </button>
-        )}
+        <NavegacaoSemanal inicio={inicio} aoMudar={setDia} />
       </header>
 
       {pendente && <AvisoDePendencia />}
 
       <ErroDeFormulario mensagem={plantoes.erro ?? estrutura.erro} />
 
-      <section aria-label="Cobertura do dia">
+      <section aria-label="Cobertura da semana">
         {plantoes.carregando ? (
           <div
             className="h-24 animate-pulse rounded-lg border border-borda bg-tinta-2"
             aria-label="Carregando escala"
           />
         ) : (
-          <TrilhoDeCobertura
-            dia={dia}
+          <CalendarioSemanal
+            inicio={inicio}
             blocos={blocos}
             aoSelecionar={(bloco) => {
-              const p = doDia.find((x) => x.id === bloco.id);
+              const p = daSemana.find((x) => x.id === bloco.id);
               if (p !== undefined) setAcao({ tipo: 'trilha', plantao: p });
             }}
           />
@@ -214,17 +168,17 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
         )}
       </div>
 
-      {!plantoes.carregando && doDia.length > 0 && (
-        <section aria-label="Plantões do dia" className="space-y-2">
-          <p className="sinal">Plantões deste dia</p>
-          {doDia.map((p) => (
+      {!plantoes.carregando && daSemana.length > 0 && (
+        <section aria-label="Plantões da semana" className="space-y-2">
+          <p className="sinal">Plantões desta semana</p>
+          {daSemana.map((p) => (
             <article key={p.id} className="rounded-xl border border-borda bg-tinta-2 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-gelo">{p.setor.nome}</p>
                   <p className="dado text-xs text-gelo-3">
-                    {formatarHora(p.inicio)}–{formatarHora(p.fim)} ·{' '}
-                    {formatarCentavos(p.valorCentavos)}
+                    {formatarDataHora(p.inicio, FUSO_LOCAL)} – {formatarDataHora(p.fim, FUSO_LOCAL)}{' '}
+                    · {formatarCentavos(p.valorCentavos)}
                   </p>
                 </div>
                 <Etiqueta estado={corDaEtiqueta(p.status)}>
@@ -313,9 +267,9 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
         </section>
       )}
 
-      {!plantoes.carregando && plantoes.erro === null && doDia.length === 0 && (
+      {!plantoes.carregando && plantoes.erro === null && daSemana.length === 0 && (
         <p className="rounded-xl border border-dashed border-borda px-4 py-6 text-center text-sm text-gelo-3">
-          Nenhum plantão neste dia.
+          Nenhum plantão nesta semana.
           {!pendente && !semSetor ? ' Publique uma vaga para abrir o turno.' : ''}
         </p>
       )}

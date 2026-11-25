@@ -49,6 +49,7 @@
     "pg": "^8.23.0",
     "prisma": "6.19.3",
     "supertest": "^7.2.2",
+    "testcontainers": "^12.1.0",
     "tsx": "^4.23.13",
     "typescript": "^5.9.3",
     "unplugin-swc": "^1.6.0",

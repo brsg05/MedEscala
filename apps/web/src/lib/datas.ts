@@ -21,11 +21,23 @@ export function doCampoLocal(valor: string): string | null {
 
 export const UMA_HORA_MS = 3_600_000;
 export const UM_DIA_MS = 24 * UMA_HORA_MS;
+export const FUSO_LOCAL = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 export function inicioDoDia(data: Date): Date {
   const d = new Date(data);
   d.setHours(0, 0, 0, 0);
   return d;
+}
+
+export function somarDias(data: Date, dias: number): Date {
+  const resultado = new Date(data);
+  resultado.setDate(resultado.getDate() + dias);
+  return resultado;
+}
+
+export function inicioDaSemana(data: Date): Date {
+  const dia = inicioDoDia(data);
+  return somarDias(dia, -((dia.getDay() + 6) % 7));
 }
 
 /**

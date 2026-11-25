@@ -3,6 +3,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { Client } from 'pg';
+import { Wait } from 'testcontainers';
 
 const RAIZ_API = join(__dirname, '..', '..');
 const ENTRY_PRISMA = require.resolve('prisma/build/index.js');
@@ -26,6 +27,8 @@ export async function subirBancoDeTeste(): Promise<BancoDeTeste> {
     .withDatabase('medescala_test')
     .withUsername('postgres')
     .withPassword('postgres')
+    // O check de porta interna via exec pode travar no Podman; pg_isready valida o Postgres.
+    .withWaitStrategy(Wait.forHealthCheck())
     .start();
 
   const url = container.getConnectionUri();

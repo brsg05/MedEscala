@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
+import { matchPath, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import type { UsuarioAutenticado } from '@medescala/contracts';
 import { cn } from '@/lib/utils';
 import { lembrarModo, modoDaRota, modoDeContexto, modosDisponiveis, type Modo } from '@/modo';
+import { Conta } from '@/paginas/Conta';
 import { Avisos } from './Avisos';
 
 /**
@@ -59,12 +60,6 @@ const GLIFOS = {
       <path d="M6.5 10.3l2.4 2.4 4.6-5.2" stroke="currentColor" strokeWidth="1.8" fill="none" />
     </>
   ),
-  conta: (
-    <>
-      <circle cx="10" cy="6.5" r="3.2" />
-      <path d="M3.8 17c0-3.4 2.8-5.6 6.2-5.6s6.2 2.2 6.2 5.6" opacity="0.6" />
-    </>
-  ),
 } as const;
 
 type NomeGlifo = keyof typeof GLIFOS;
@@ -77,10 +72,8 @@ interface ItemNav {
 
 /** A navegação é do modo ativo: cada contexto vê só o que lhe cabe (DEC-061). */
 function navegacaoDo(modo: Modo | null): ItemNav[] {
-  const conta: ItemNav = { para: '/conta', rotulo: 'Conta', glifo: 'conta' };
-
   if (modo === null) {
-    return [conta];
+    return [];
   }
 
   switch (modo.tipo) {
@@ -90,7 +83,6 @@ function navegacaoDo(modo: Modo | null): ItemNav[] {
         { para: '/disponibilidade', rotulo: 'Disponível', glifo: 'disponibilidade' },
         { para: '/decisoes', rotulo: 'Decisões', glifo: 'decisoes' },
         { para: '/repasses', rotulo: 'Repasses', glifo: 'repasses' },
-        conta,
       ];
     case 'instituicao': {
       const base = `/instituicao/${modo.instituicaoId}`;
@@ -98,11 +90,10 @@ function navegacaoDo(modo: Modo | null): ItemNav[] {
         { para: `${base}/escala`, rotulo: 'Escala', glifo: 'escala' },
         { para: `${base}/decisoes`, rotulo: 'Decisões', glifo: 'decisoes' },
         { para: `${base}/estrutura`, rotulo: 'Estrutura', glifo: 'estrutura' },
-        conta,
       ];
     }
     case 'operador':
-      return [{ para: '/operador', rotulo: 'Verificações', glifo: 'verificacao' }, conta];
+      return [{ para: '/operador', rotulo: 'Verificações', glifo: 'verificacao' }];
   }
 }
 
@@ -114,19 +105,33 @@ function Glifo({ nome, className }: { nome: NomeGlifo; className?: string }): Re
   );
 }
 
-export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JSX.Element {
+export function AppShell({
+  usuario,
+  aoSair,
+}: {
+  usuario: UsuarioAutenticado;
+  aoSair: () => void;
+}): React.JSX.Element {
   const { pathname } = useLocation();
+  const [contaAberta, setContaAberta] = useState(pathname === '/conta');
   const modos = useMemo(() => modosDisponiveis(usuario), [usuario]);
   const ativo = modoDaRota(modos, pathname);
   // Fora de um modo (Conta), a navegação continua sendo a do último modo usado.
   const contexto = modoDeContexto(modos, pathname);
   const navegacao = navegacaoDo(contexto);
+  const escala =
+    matchPath('/escala', pathname) !== null ||
+    matchPath('/instituicao/:instituicaoId/escala', pathname) !== null;
 
   useEffect(() => {
     if (ativo !== null) {
       lembrarModo(ativo);
     }
   }, [ativo]);
+
+  useEffect(() => {
+    if (pathname === '/conta') setContaAberta(true);
+  }, [pathname]);
 
   const iniciais = usuario.nome
     .split(' ')
@@ -140,7 +145,7 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
       {/* Navegação lateral no desktop: a estação da chefia é um computador. */}
       <nav
         aria-label="Seções"
-        className="hidden w-60 shrink-0 border-r border-borda bg-tinta-2 p-4 md:flex md:flex-col"
+        className="hidden w-60 shrink-0 border-r border-borda bg-tinta-2 p-4 pb-24 md:sticky md:top-0 md:flex md:h-dvh md:flex-col md:overflow-y-auto"
       >
         <MarcaDoApp className="mb-6 px-2" />
         <SeletorDeModo modos={modos} ativo={contexto} className="mb-6" />
@@ -169,52 +174,63 @@ export function AppShell({ usuario }: { usuario: UsuarioAutenticado }): React.JS
       </nav>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-borda bg-tinta/95 px-4 backdrop-blur md:h-16 md:px-6">
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-borda bg-tinta/95 px-4 backdrop-blur md:fixed md:top-auto md:bottom-0 md:left-0 md:h-20 md:w-60 md:border-t md:border-r md:border-b-0 md:bg-tinta-2 md:backdrop-blur-none">
           <MarcaDoApp className="shrink-0 md:hidden" />
           <SeletorDeModo modos={modos} ativo={contexto} className="min-w-0 md:hidden" compacto />
-          <div className="hidden md:block" />
 
-          <div className="flex shrink-0 items-center gap-1.5">
+          <div className="flex shrink-0 items-center gap-1.5 md:min-w-0 md:flex-1">
             <Avisos />
-            <NavLink
-              to="/conta"
-              className="dado flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tinta-3 text-xs font-semibold text-gelo-2 transition-colors hover:bg-borda"
+            <button
+              type="button"
+              onClick={() => setContaAberta(true)}
+              className="flex min-w-0 items-center gap-2 rounded-lg text-left text-gelo-2 transition-colors hover:text-gelo md:order-first md:flex-1"
               aria-label={`Conta de ${usuario.nome}`}
             >
-              {iniciais}
-            </NavLink>
+              <span className="dado flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tinta-3 text-xs font-semibold transition-colors hover:bg-borda">
+                {iniciais}
+              </span>
+              <span className="hidden min-w-0 md:block">
+                <span className="block truncate text-sm font-medium">{usuario.nome}</span>
+                <span className="block text-xs text-gelo-3">Minha conta</span>
+              </span>
+            </button>
           </div>
         </header>
 
         {/* `pb-24` abre espaço para a barra inferior não cobrir o último elemento. */}
         <main className="flex-1 px-4 pt-5 pb-24 md:px-6 md:pt-6 md:pb-8">
-          <div className="mx-auto w-full max-w-2xl">
+          <div className={cn('mx-auto w-full max-w-2xl', escala && '2xl:max-w-7xl')}>
             <Outlet />
           </div>
         </main>
       </div>
 
       {/* Barra inferior no celular: alcance do polegar às 3h da manhã (RNF03). */}
-      <nav
-        aria-label="Seções"
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-borda bg-tinta-2/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
-      >
-        {navegacao.map((item) => (
-          <NavLink
-            key={item.para}
-            to={item.para}
-            className={({ isActive }) =>
-              cn(
-                'flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.6875rem] font-medium transition-colors',
-                isActive ? 'text-turno' : 'text-gelo-3',
-              )
-            }
-          >
-            <Glifo nome={item.glifo} className="h-5 w-5" />
-            {item.rotulo}
-          </NavLink>
-        ))}
-      </nav>
+      {navegacao.length > 0 && (
+        <nav
+          aria-label="Seções"
+          className="fixed inset-x-0 bottom-0 z-30 flex border-t border-borda bg-tinta-2/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        >
+          {navegacao.map((item) => (
+            <NavLink
+              key={item.para}
+              to={item.para}
+              className={({ isActive }) =>
+                cn(
+                  'flex flex-1 flex-col items-center gap-1 py-2.5 text-[0.6875rem] font-medium transition-colors',
+                  isActive ? 'text-turno' : 'text-gelo-3',
+                )
+              }
+            >
+              <Glifo nome={item.glifo} className="h-5 w-5" />
+              {item.rotulo}
+            </NavLink>
+          ))}
+        </nav>
+      )}
+      {contaAberta && (
+        <Conta usuario={usuario} aoSair={aoSair} aoFechar={() => setContaAberta(false)} />
+      )}
     </div>
   );
 }
