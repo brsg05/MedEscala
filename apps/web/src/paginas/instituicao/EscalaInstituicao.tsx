@@ -177,8 +177,8 @@ export function EscalaInstituicao({ usuario }: { usuario: UsuarioAutenticado }):
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-gelo">{p.setor.nome}</p>
                   <p className="dado text-xs text-gelo-3">
-                    {formatarDataHora(p.inicio, FUSO_LOCAL)} –{' '}
-                    {formatarDataHora(p.fim, FUSO_LOCAL)} · {formatarCentavos(p.valorCentavos)}
+                    {formatarDataHora(p.inicio, FUSO_LOCAL)} – {formatarDataHora(p.fim, FUSO_LOCAL)}{' '}
+                    · {formatarCentavos(p.valorCentavos)}
                   </p>
                 </div>
                 <Etiqueta estado={corDaEtiqueta(p.status)}>

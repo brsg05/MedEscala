@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { ROTULO_PERFIL, type PoliticaResponse, type UsuarioAutenticado } from '@medescala/contracts';
+import {
+  ROTULO_PERFIL,
+  type PoliticaResponse,
+  type UsuarioAutenticado,
+} from '@medescala/contracts';
 import { api } from '@/api/cliente';
 import { Painel } from '@/componentes/Painel';
 import { PoliticaDePrivacidade } from '@/componentes/PoliticaDePrivacidade';
@@ -19,7 +23,10 @@ export function Conta({
   const [politica, setPolitica] = useState<PoliticaResponse | null>(null);
 
   return (
-    <Painel titulo={politica === null ? 'Sua conta' : 'Política de privacidade'} aoFechar={aoFechar}>
+    <Painel
+      titulo={politica === null ? 'Sua conta' : 'Política de privacidade'}
+      aoFechar={aoFechar}
+    >
       {politica !== null ? (
         <div className="space-y-4">
           <PoliticaDePrivacidade politica={politica} />
@@ -87,7 +94,11 @@ export function Conta({
 }
 
 /** F24 — qual versão da política a pessoa aceitou, e quando; e o texto dela. */
-function Privacidade({ aoLer }: { aoLer: (politica: PoliticaResponse) => void }): React.JSX.Element {
+function Privacidade({
+  aoLer,
+}: {
+  aoLer: (politica: PoliticaResponse) => void;
+}): React.JSX.Element {
   const aceite = useRecurso(() => api.situacaoDoAceite());
   const politica = useRecurso(() => api.politica());
 

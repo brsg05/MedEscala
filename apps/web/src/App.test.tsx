@@ -359,9 +359,9 @@ describe('navegação semanal', () => {
 
     await screen.findByLabelText('Cobertura da semana');
     await waitFor(() => {
-      expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes(rota))).toHaveLength(
-        1,
-      );
+      expect(
+        vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes(rota)),
+      ).toHaveLength(1);
     });
     const primeira = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes(rota));
     const consulta = new URL(String(primeira?.[0]));
@@ -375,9 +375,9 @@ describe('navegação semanal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Próxima semana' }));
     await waitFor(() => {
-      expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes(rota))).toHaveLength(
-        2,
-      );
+      expect(
+        vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes(rota)),
+      ).toHaveLength(2);
     });
     const chamadas = vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes(rota));
     const proxima = new URL(String(chamadas[1]?.[0]));
