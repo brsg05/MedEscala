@@ -182,21 +182,21 @@ export function CalendarioSemanal({
                   key={bloco.id}
                   type="button"
                   onClick={() => aoSelecionar(bloco)}
-                  aria-label={`${bloco.setor}, ${formatarData(dia, FUSO_LOCAL)}, ${formatarHora(bloco.inicio, FUSO_LOCAL)}–${formatarHora(bloco.fim, FUSO_LOCAL)}`}
+                  aria-label={`${bloco.setor}, ${formatarData(dia, FUSO_LOCAL)}, ${formatarHora(bloco.inicio, FUSO_LOCAL)} - ${formatarHora(bloco.fim, FUSO_LOCAL)}`}
                   className={cn(
                     'absolute overflow-hidden rounded border px-px text-left text-[0.625rem] hover:brightness-125 focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-turno sm:px-1 sm:text-xs',
                     CORES[bloco.estado],
                   )}
                   style={{
-                    top: (de / 60) * ALTURA_HORA,
-                    height: Math.max(((fim - de) / 60) * ALTURA_HORA, 1),
-                    left: `${String((coluna / colunas) * 100)}%`,
-                    width: `${String(100 / colunas)}%`,
+                    top: (de / 60) * ALTURA_HORA + 2,
+                    height: Math.max(((fim - de) / 60) * ALTURA_HORA - 4, 1),
+                    left: `calc(${String((coluna / colunas) * 100)}% + 2px)`,
+                    width: `calc(${String(100 / colunas)}% - 4px)`,
                   }}
                 >
                   <span className="block truncate font-semibold">{bloco.setor}</span>
                   <span className="dado block truncate">
-                    {formatarHora(bloco.inicio, FUSO_LOCAL)}–{formatarHora(bloco.fim, FUSO_LOCAL)}
+                    {formatarHora(bloco.inicio, FUSO_LOCAL)} - {formatarHora(bloco.fim, FUSO_LOCAL)}
                   </span>
                 </button>
               ))}

@@ -45,10 +45,11 @@ describe('CalendarioSemanal', () => {
 
     const primeiro = screen.getByRole('button', { name: /Noturno/u });
     const segundo = screen.getByRole('button', { name: /Simultâneo/u });
-    expect(primeiro.style.top).toBe('0px');
-    expect(primeiro.style.height).toBe('240px');
-    expect(primeiro.style.width).toBe('50%');
-    expect(segundo.style.left).toBe('50%');
+    expect(primeiro.style.top).toBe('2px');
+    expect(primeiro.style.height).toBe('236px');
+    expect(primeiro.style.width).toBe('calc(50% - 4px)');
+    expect(segundo.style.left).toBe('calc(50% + 2px)');
+    expect(primeiro.textContent).toContain('20:00 - 08:00');
     fireEvent.click(primeiro);
     expect(selecionar).toHaveBeenCalledWith(noturno);
   });
@@ -64,7 +65,7 @@ describe('CalendarioSemanal', () => {
 
     const segmentos = screen.getAllByRole('button', { name: /Noturno/u });
     expect(segmentos).toHaveLength(2);
-    expect(segmentos[0]?.style.top).toBe('600px');
-    expect(segmentos[1]?.style.height).toBe('720px');
+    expect(segmentos[0]?.style.top).toBe('602px');
+    expect(segmentos[1]?.style.height).toBe('716px');
   });
 });
